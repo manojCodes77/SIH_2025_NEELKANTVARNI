@@ -19,8 +19,8 @@ This README provides an overview of the project, including team details, relevan
 
 ## Project Links
 
-- **SIH Presentation:** [Final SIH Presentation](URL TO PPT UPLOADED TO GITHUB)
-- **Video Demonstration:** [Watch Video](UNLISTED YOUTUBE LINK)
-- **Live Deployment:** [View Deployment](DEPLOYED LINK IF ANY)
+- **SIH Presentation:** [Final SIH Presentation](https://github.com/manojCodes77/SIH_2025_NEELKANTVARNI/blob/main/files/internal_ppt_NEELKANTVARNI.pdf)
+- **Video Demonstration:** [Watch Video](https://www.youtube.com/watch?v=EaWfp8M-nYg)
+- **Live Deployment:** [View Deployment](https://sih-2025-neelkantvarni.vercel.app/)
 - **Source Code:** [GitHub Repository](https://github.com/manojCodes77/SIH_2025_NEELKANTVARNI)
 - **Additional Resources:** [Other Relevant Links](ANY OTHER RELEVANT LINKS)
