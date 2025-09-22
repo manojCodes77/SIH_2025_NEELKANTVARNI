@@ -33,22 +33,22 @@ export class Rover {
     private path: Point[];
     private terrainHeightFunction: (x: number, z: number) => number;
     private animationMixer: THREE.AnimationMixer | null = null;
-    private animations: THREE.AnimationClip[] = [];
+    private headlight: THREE.SpotLight | null = null;
     
     constructor(options: RoverOptions = {}) {
         // Apply rover type presets
         const typePresets = this.getRoverTypePresets(options.type ?? 'standard');
         
         this.options = {
-            size: options.size ?? typePresets.size,
-            color: options.color ?? typePresets.color,
-            speed: options.speed ?? typePresets.speed,
-            wheelCount: options.wheelCount ?? typePresets.wheelCount,
-            antennaHeight: options.antennaHeight ?? typePresets.antennaHeight,
+            size: options.size ?? typePresets.size!,
+            color: options.color ?? typePresets.color!,
+            speed: options.speed ?? typePresets.speed!,
+            wheelCount: options.wheelCount ?? typePresets.wheelCount!,
+            antennaHeight: options.antennaHeight ?? typePresets.antennaHeight!,
             type: options.type ?? 'standard',
-            maxSlope: options.maxSlope ?? typePresets.maxSlope,
-            energyCapacity: options.energyCapacity ?? typePresets.energyCapacity,
-            energyEfficiency: options.energyEfficiency ?? typePresets.energyEfficiency
+            maxSlope: options.maxSlope ?? typePresets.maxSlope!,
+            energyCapacity: options.energyCapacity ?? typePresets.energyCapacity!,
+            energyEfficiency: options.energyEfficiency ?? typePresets.energyEfficiency!
         };
         
         this.state = {
@@ -193,6 +193,44 @@ export class Rover {
         camera.receiveShadow = true;
         group.add(camera);
         
+        // Headlight
+        const headlightGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8);
+        const headlightMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.8 });
+        const headlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
+        headlight.position.set(this.options.size * 0.4, this.options.size * 0.15, this.options.size * 0.5);
+        headlight.rotation.z = Math.PI / 2;
+        headlight.castShadow = true;
+        headlight.receiveShadow = true;
+        group.add(headlight);
+        
+        // Headlight bulb (emissive)
+        const bulbGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+        const bulbMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, 
+            emissive: 0xffffff, 
+            emissiveIntensity: 1.0,
+            roughness: 0.1, 
+            metalness: 0.0 
+        });
+        const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+        bulb.position.set(this.options.size * 0.4, this.options.size * 0.15, this.options.size * 0.58);
+        bulb.castShadow = false;
+        bulb.receiveShadow = false;
+        group.add(bulb);
+        
+        // Add spotlight to the rover
+        this.headlight = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 4, 0.3, 1);
+        this.headlight.position.set(this.options.size * 0.4, this.options.size * 0.15, this.options.size * 0.6);
+        this.headlight.target.position.set(this.options.size * 0.4, this.options.size * 0.15, this.options.size * 3);
+        this.headlight.castShadow = true;
+        this.headlight.shadow.mapSize.width = 512;
+        this.headlight.shadow.mapSize.height = 512;
+        this.headlight.shadow.camera.near = 0.1;
+        this.headlight.shadow.camera.far = 30;
+        this.headlight.shadow.camera.fov = 45;
+        group.add(this.headlight);
+        group.add(this.headlight.target);
+        
         return group;
     }
     
@@ -222,6 +260,25 @@ export class Rover {
         const height = this.terrainHeightFunction(x, z);
         this.state.position.set(x, height + this.options.size * 0.15, z);
         this.mesh.position.copy(this.state.position);
+        
+        // Update headlight position and direction
+        if (this.headlight) {
+            // Position headlight at rover front
+            const forwardOffset = this.options.size * 0.6;
+            this.headlight.position.set(
+                x + Math.sin(this.state.rotation.y) * forwardOffset,
+                this.state.position.y,
+                z + Math.cos(this.state.rotation.y) * forwardOffset
+            );
+            
+            // Set target position ahead of rover
+            const forwardDistance = this.options.size * 3;
+            this.headlight.target.position.set(
+                x + Math.sin(this.state.rotation.y) * forwardDistance,
+                this.state.position.y,
+                z + Math.cos(this.state.rotation.y) * forwardDistance
+            );
+        }
     }
     
     /**
@@ -230,6 +287,25 @@ export class Rover {
     setRotation(y: number): void {
         this.state.rotation.y = y;
         this.mesh.rotation.y = y;
+        
+        // Update headlight position and direction to follow rover rotation
+        if (this.headlight) {
+            // Position headlight at rover front
+            const forwardOffset = this.options.size * 0.6;
+            this.headlight.position.set(
+                this.state.position.x + Math.sin(y) * forwardOffset,
+                this.state.position.y,
+                this.state.position.z + Math.cos(y) * forwardOffset
+            );
+            
+            // Set target position ahead of rover
+            const forwardDistance = this.options.size * 3;
+            this.headlight.target.position.set(
+                this.state.position.x + Math.sin(y) * forwardDistance,
+                this.state.position.y,
+                this.state.position.z + Math.cos(y) * forwardDistance
+            );
+        }
     }
     
     /**
@@ -521,6 +597,24 @@ export class Rover {
      */
     getRoverType(): string {
         return this.options.type;
+    }
+
+    /**
+     * Toggle headlight on/off
+     */
+    toggleHeadlight(): void {
+        if (this.headlight) {
+            this.headlight.intensity = this.headlight.intensity > 0 ? 0 : 3;
+        }
+    }
+
+    /**
+     * Set headlight intensity
+     */
+    setHeadlightIntensity(intensity: number): void {
+        if (this.headlight) {
+            this.headlight.intensity = Math.max(0, Math.min(5, intensity));
+        }
     }
 
     /**

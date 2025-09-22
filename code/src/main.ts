@@ -35,13 +35,13 @@ class PlanetaryRoverSimulator {
     private bloomPass: UnrealBloomPass | null = null;
     
     // UI Elements
-    private loadingElement: HTMLElement;
-    private statusElement: HTMLElement;
-    private resetBtn: HTMLButtonElement;
-    private toggleSlopeBtn: HTMLButtonElement;
-    private findPathBtn: HTMLButtonElement;
-    private animateRoverBtn: HTMLButtonElement;
-    private clearPathBtn: HTMLButtonElement;
+    private loadingElement!: HTMLElement;
+    private statusElement!: HTMLElement;
+    private resetBtn!: HTMLButtonElement;
+    private toggleSlopeBtn!: HTMLButtonElement;
+    private findPathBtn!: HTMLButtonElement;
+    private animateRoverBtn!: HTMLButtonElement;
+    private clearPathBtn!: HTMLButtonElement;
     // Terrain controls
     private mountainScaleInput: HTMLInputElement | null = null;
     private noiseScaleInput: HTMLInputElement | null = null;
@@ -580,11 +580,11 @@ class PlanetaryRoverSimulator {
 
         // Handle rotation
         if (this.pressedKeys.has('a')) {
-            this.rover.setRotation(currentRot - turnSpeed);
+            this.rover.setRotation(currentRot + turnSpeed);
         }
         
         if (this.pressedKeys.has('d')) {
-            this.rover.setRotation(currentRot + turnSpeed);
+            this.rover.setRotation(currentRot - turnSpeed);
         }
     }
 
@@ -649,6 +649,8 @@ class PlanetaryRoverSimulator {
      * Start the simulation
      */
     public start(): void {
+        this.setupEventListeners();
+        this.loadTerrain();
         this.animate();
     }
     
@@ -835,7 +837,7 @@ class PlanetaryRoverSimulator {
 
         this.roverCameraRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         this.roverCameraRenderer.setSize(200, 150);
-        this.roverCameraRenderer.setClearColor(this.renderer.getClearColor());
+        this.roverCameraRenderer.setClearColor(this.renderer.getClearColor(new THREE.Color()));
     }
 
     /**
@@ -914,6 +916,11 @@ class PlanetaryRoverSimulator {
             case 'c':
                 this.toggleRoverCamera();
                 return;
+            case 'l':
+                if (this.rover) {
+                    this.rover.toggleHeadlight();
+                }
+                return;
         }
 
         // Manual mode controls
@@ -949,33 +956,6 @@ class PlanetaryRoverSimulator {
         if (element) element.textContent = value;
     }
 
-    /**
-     * Start the simulation
-     */
-    public start(): void {
-        this.setupEventListeners();
-        this.loadTerrain();
-        this.animate();
-    }
-
-    /**
-     * Dispose of resources
-     */
-    public dispose(): void {
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
-        }
-        
-        if (this.rover) {
-            this.rover.dispose();
-        }
-        
-        if (this.terrainMesh) {
-            this.terrainMesh.dispose();
-        }
-        
-        this.renderer.dispose();
-    }
 }
 
 // Initialize the application when the page loads
