@@ -58,6 +58,9 @@ class PlanetaryRoverSimulator {
     private roverCamera: THREE.PerspectiveCamera | null = null;
     private roverCameraRenderer: THREE.WebGLRenderer | null = null;
     
+    // Manual control state
+    private pressedKeys: Set<string> = new Set();
+    
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -70,10 +73,6 @@ class PlanetaryRoverSimulator {
         this.initializeScene();
         this.initializeUI();
         this.initializeControls();
-        this.setupEventListeners();
-        
-        // Start the application
-        this.loadTerrain();
     }
     
     /**
@@ -556,6 +555,40 @@ class PlanetaryRoverSimulator {
     }
     
     /**
+     * Update manual rover movement based on pressed keys
+     */
+    private updateManualMovement(deltaTime: number): void {
+        if (!this.manualModeCheckbox?.checked || !this.rover || this.pressedKeys.size === 0) return;
+
+        const moveSpeed = 8.0 * deltaTime; // Units per second
+        const turnSpeed = 2.0 * deltaTime; // Radians per second
+        const currentPos = this.rover.getState().position;
+        const currentRot = this.rover.getState().rotation.y;
+
+        // Handle movement
+        if (this.pressedKeys.has('w')) {
+            const forwardX = currentPos.x + Math.sin(currentRot) * moveSpeed;
+            const forwardZ = currentPos.z + Math.cos(currentRot) * moveSpeed;
+            this.rover.setPosition(forwardX, forwardZ);
+        }
+        
+        if (this.pressedKeys.has('s')) {
+            const backwardX = currentPos.x - Math.sin(currentRot) * moveSpeed;
+            const backwardZ = currentPos.z - Math.cos(currentRot) * moveSpeed;
+            this.rover.setPosition(backwardX, backwardZ);
+        }
+
+        // Handle rotation
+        if (this.pressedKeys.has('a')) {
+            this.rover.setRotation(currentRot - turnSpeed);
+        }
+        
+        if (this.pressedKeys.has('d')) {
+            this.rover.setRotation(currentRot + turnSpeed);
+        }
+    }
+
+    /**
      * Animation loop
      */
     private animate(): void {
@@ -566,6 +599,9 @@ class PlanetaryRoverSimulator {
         
         // Update rover
         if (this.rover) {
+            // Handle manual movement
+            this.updateManualMovement(delta);
+            
             if (this.rover.isMoving()) {
                 this.rover.update(delta);
                 
@@ -870,27 +906,29 @@ class PlanetaryRoverSimulator {
      * Handle keyboard input
      */
     private onKeyDown(event: KeyboardEvent): void {
+        const key = event.key.toLowerCase();
+        this.pressedKeys.add(key);
+
+        // Handle special keys that don't need manual mode
+        switch (key) {
+            case 'c':
+                this.toggleRoverCamera();
+                return;
+        }
+
+        // Manual mode controls
         if (!this.manualModeCheckbox?.checked || !this.rover) return;
 
-        switch (event.key.toLowerCase()) {
+        switch (key) {
             case 'w':
-                // Move forward
-                break;
             case 's':
-                // Move backward
-                break;
             case 'a':
-                // Turn left
-                break;
             case 'd':
-                // Turn right
+                event.preventDefault();
                 break;
             case ' ':
                 event.preventDefault();
                 this.rover.stopMovement();
-                break;
-            case 'c':
-                this.toggleRoverCamera();
                 break;
         }
     }
@@ -899,7 +937,8 @@ class PlanetaryRoverSimulator {
      * Handle key up events
      */
     private onKeyUp(event: KeyboardEvent): void {
-        // Handle key releases for smooth movement
+        const key = event.key.toLowerCase();
+        this.pressedKeys.delete(key);
     }
 
     /**
@@ -908,6 +947,34 @@ class PlanetaryRoverSimulator {
     private updateElement(id: string, value: string): void {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
+    }
+
+    /**
+     * Start the simulation
+     */
+    public start(): void {
+        this.setupEventListeners();
+        this.loadTerrain();
+        this.animate();
+    }
+
+    /**
+     * Dispose of resources
+     */
+    public dispose(): void {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        
+        if (this.rover) {
+            this.rover.dispose();
+        }
+        
+        if (this.terrainMesh) {
+            this.terrainMesh.dispose();
+        }
+        
+        this.renderer.dispose();
     }
 }
 

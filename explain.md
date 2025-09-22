@@ -39,7 +39,7 @@ This simulator showcases the future of planetary exploration through an interact
 - **Waypoint Management**: Multi-point mission planning
 
 ### 🎥 **Advanced Visualization**
-- **Rover Camera**: First-person view from rover perspective
+- **Rover Camera**: First-person view from rover perspective (enabled by default)
 - **3D Path Visualization**: Glowing tube geometry with emissive materials
 - **Slope Heatmaps**: Color-coded terrain difficulty overlay
 - **Day/Night Cycle**: Dynamic lighting with solar panel effects
@@ -48,9 +48,10 @@ This simulator showcases the future of planetary exploration through an interact
 ### 🎮 **Interactive Controls**
 - **Terrain Customization**: Real-time parameter adjustment
 - **Mouse Navigation**: Click to set start/end points
-- **Keyboard Controls**: Manual rover driving (WASD)
+- **Manual Rover Control**: Full WASD keyboard control with smooth movement
 - **Camera Controls**: Orbit, zoom, and pan with smooth damping
 - **UI Panels**: Collapsible, responsive interface elements
+- **Dual Control Modes**: Switch between automatic pathfinding and manual driving
 
 ## 🛠️ Technical Architecture
 
@@ -100,6 +101,8 @@ This simulator showcases the future of planetary exploration through an interact
 - UI event handling and state management
 - Post-processing pipeline (bloom, tone mapping)
 - Real-time dashboard updates
+- Manual control system with continuous movement
+- Rover camera management and rendering
 ```
 
 ## 🚀 Getting Started
@@ -152,9 +155,24 @@ npm run preview
 
 ### **Advanced Features**
 - **Toggle Slope Map**: Visualize terrain difficulty
-- **Rover Camera**: First-person view from rover
+- **Rover Camera**: First-person view from rover (always visible by default)
 - **Day/Night Cycle**: Dynamic lighting simulation
-- **Manual Control**: Use WASD keys for direct rover control
+- **Manual Control**: Enable manual mode and use WASD keys for direct rover control
+- **Continuous Movement**: Smooth, frame-rate independent rover movement
+- **Key Combinations**: Support for simultaneous key presses (e.g., W+A for diagonal movement)
+
+### 🎮 **Manual Control System**
+- **WASD Movement**: 
+  - **W**: Move forward in rover's current direction
+  - **S**: Move backward 
+  - **A**: Turn left (counter-clockwise)
+  - **D**: Turn right (clockwise)
+  - **Space**: Stop rover movement
+  - **C**: Toggle rover camera (works in both modes)
+- **Smooth Controls**: Frame-rate independent movement (8 units/second forward/backward, 2 radians/second turning)
+- **Terrain Following**: Rover automatically adjusts to terrain height as it moves
+- **Dual Mode Operation**: Switch seamlessly between automatic pathfinding and manual control
+- **Key State Tracking**: Continuous movement while keys are held down
 
 ## 🏆 Hackathon Demo Features
 
@@ -171,14 +189,18 @@ npm run preview
 - **Mission Control Interface**: Professional-grade dashboard
 - **Multiple Rover Types**: Demonstrates versatility in rover design
 - **Advanced Visualization**: 3D graphics with modern post-processing
+- **Dual Control System**: Both automatic pathfinding and manual driving capabilities
+- **Real-time Rover Camera**: Live first-person view for immersive experience
 
 ## 🔮 Future Enhancements
 
 ### **Planned Features**
+- **Dynamic Obstacles**: Click to place/remove obstacles with real-time replanning
+- **Particle Effects**: Dust clouds, landing thrusters, environmental effects
+- **Analytics Panel**: Real-time graphs and performance metrics
 - **D* Lite Algorithm**: Dynamic pathfinding for changing environments
 - **Multi-rover Coordination**: Swarm intelligence and collision avoidance
 - **Real Mars Data**: Integration with NASA DEM datasets
-- **Particle Effects**: Dust clouds, landing thrusters, environmental effects
 - **Voice Commands**: Natural language rover control
 - **Mission Export**: Data export for real rover applications
 
