@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planetary Rover Pathfinding Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            overflow: hidden;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 260px;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        
+        .control-group {
+            margin-bottom: 8px;
+        }
+        
+        .control-group h3 {
+            margin: 0 0 6px 0;
+            font-size: 13px;
+            color: #64b5f6;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 280px;
+            font-size: 11px;
+        }
+
+        /* Mission Dashboard */
+        #mission-dashboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 260px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .dashboard-section {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dashboard-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .dashboard-section h4 {
+            margin: 0 0 4px 0;
+            font-size: 10px;
+            color: #64b5f6;
+            text-transform: uppercase;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+            font-size: 10px;
+        }
+
+        .metric-label {
+            color: #ccc;
+        }
+
+        .metric-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .energy-bar, .efficiency-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 3px 0;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44);
+            transition: width 0.3s ease;
+        }
+
+        .efficiency-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4444ff, #44aaff, #44ff44);
+            transition: width 0.3s ease;
+        }
+
+        /* Rover Camera PiP */
+        #rover-camera {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            display: none;
+        }
+
+        #rover-camera canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #instructions h4 {
+            margin: 0 0 6px 0;
+            color: #ffd54f;
+            font-size: 12px;
+        }
+
+        #instructions ul {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        #instructions li {
+            margin-bottom: 3px;
+            font-size: 10px;
+        }
+
+        /* Slope legend */
+        #slope-legend {
+            position: absolute;
+            right: 20px;
+            top: 420px;
+            z-index: 101;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 220px;
+            display: none;
+        }
+        #slope-gradient {
+            height: 12px;
+            width: 100%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #33cc55 0%, #cccc33 50%, #cc3322 100%);
+            margin: 6px 0 2px 0;
+        }
+        #slope-legend .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        #instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        #instructions li {
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading" id="loading">
+            Loading Planetary Rover Simulator...
+        </div>
+        
+        <div id="ui-overlay">
+            <div class="control-group">
+                <h3>🎮 Controls</h3>
+                <button id="reset-btn">Reset Terrain</button>
+                <button id="toggle-slope-btn">Toggle Slope Map</button>
+                <button id="toggle-camera-btn">Toggle Rover Cam</button>
+                <button id="day-night-btn">Day/Night</button>
+            </div>
+
+            <div class="control-group">
+                <h3>⛰️ Terrain</h3>
+                <div>
+                    <label for="terrain-preset">Preset</label>
+                    <select id="terrain-preset">
+                        <option value="mars">Mars Plains</option>
+                        <option value="mountains">Rocky Mountains</option>
+                        <option value="hills">Rolling Hills</option>
+                        <option value="canyon">Canyon Lands</option>
+                        <option value="custom" selected>Custom</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <label for="mountain-scale" style="font-size: 10px;">Mountain Height</label>
+                    <input id="mountain-scale" type="range" min="5" max="80" step="1" value="20" style="width: 100%; margin: 2px 0;"/>
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <label for="noise-scale" style="font-size: 10px;">Feature Size</label>
+                    <input id="noise-scale" type="range" min="0.01" max="0.20" step="0.005" value="0.05" style="width: 100%; margin: 2px 0;"/>
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <label for="octaves" style="font-size: 10px;">Octaves</label>
+                    <input id="octaves" type="range" min="1" max="8" step="1" value="6" style="width: 100%; margin: 2px 0;"/>
+                </div>
+                <small style="font-size: 9px;">💡 Try different presets or customize your own terrain!</small>
+            </div>
+            
+            <div class="control-group">
+                <h3>🗺️ Pathfinding</h3>
+                <button id="find-path-btn" disabled>Find Path</button>
+                <button id="animate-rover-btn" disabled>Animate Rover</button>
+                <button id="clear-path-btn">Clear Path</button>
+            </div>
+
+            <div class="control-group">
+                <h3>🤖 Rover Type</h3>
+                <select id="rover-type">
+                    <option value="standard">Standard Rover</option>
+                    <option value="scout">Scout (Fast, Light)</option>
+                    <option value="heavy">Heavy (Strong, Slow)</option>
+                    <option value="scientific">Scientific (Sensors)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎮 Manual Control</h3>
+                <small>WASD: Drive | Space: Stop | C: Camera</small>
+                <div>
+                    <label><input type="checkbox" id="manual-mode"> Manual Drive Mode</label>
+                </div>
+            </div>
+            
+            <div class="status" id="status">
+                Ready to load terrain...
+            </div>
+        </div>
+        
+        <!-- Mission Dashboard -->
+        <div id="mission-dashboard">
+            <div class="dashboard-section">
+                <h4>🚀 Mission Status</h4>
+                <div class="metric">
+                    <span class="metric-label">Mission Time:</span>
+                    <span class="metric-value" id="mission-time">00:00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Rover Status:</span>
+                    <span class="metric-value" id="rover-status">Standby</span>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h4>⚡ Energy System</h4>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energy-fill" style="width: 100%"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Battery:</span>
+                    <span class="metric-value" id="energy-value">100%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Solar Input:</span>
+                    <span class="metric-value" id="solar-input">+2.5 W</span>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h4>📊 Navigation</h4>
+                <div class="metric">
+                    <span class="metric-label">Distance:</span>
+                    <span class="metric-value" id="distance-traveled">0.0m</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Speed:</span>
+                    <span class="metric-value" id="current-speed">0.0 m/s</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Elevation:</span>
+                    <span class="metric-value" id="current-elevation">0.0m</span>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h4>🎯 Path Analysis</h4>
+                <div class="efficiency-bar">
+                    <div class="efficiency-fill" id="efficiency-fill" style="width: 100%"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Efficiency:</span>
+                    <span class="metric-value" id="path-efficiency">100%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Waypoints:</span>
+                    <span class="metric-value" id="waypoints-remaining">0/0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Rover Camera PiP -->
+        <div id="rover-camera">
+            <canvas id="rover-camera-canvas" width="200" height="150"></canvas>
+        </div>
+        
+        <div id="instructions">
+            <h4>🎯 Instructions</h4>
+            <ul>
+                <li>Click "Reset Terrain" to load heightmap</li>
+                <li>Click terrain to set start point (green)</li>
+                <li>Click terrain to set end point (red)</li>
+                <li>Click "Find Path" to calculate route</li>
+                <li>Click "Animate Rover" to watch it move</li>
+                <li>Use mouse to rotate/zoom view</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div id="slope-legend">
+        <div>Terrain Slope (degrees)</div>
+        <div id="slope-gradient"></div>
+        <div class="labels">
+            <span>0°</span>
+            <span>~22°</span>
+            <span>45°+</span>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
