@@ -139,53 +139,6 @@ export class PathfindingEngine {
         return { path: [], cost: 0, success: false, nodesExplored, executionTime: performance.now() - startTime };
     }
     
-    /**
-     * Get valid neighbors for a given node
-     */
-    private getNeighbors(node: PathNode): PathNode[] {
-        const neighbors: PathNode[] = [];
-        const { x, y } = node;
-        
-        // Define movement directions
-        const directions = [
-            // Cardinal directions
-            { dx: 0, dy: -1 }, // North
-            { dx: 1, dy: 0 },  // East
-            { dx: 0, dy: 1 },  // South
-            { dx: -1, dy: 0 }, // West
-        ];
-        
-        // Add diagonal directions if enabled
-        if (this.options.diagonalMovement) {
-            directions.push(
-                { dx: -1, dy: -1 }, // Northwest
-                { dx: 1, dy: -1 },  // Northeast
-                { dx: 1, dy: 1 },   // Southeast
-                { dx: -1, dy: 1 }   // Southwest
-            );
-        }
-        
-        for (const { dx, dy } of directions) {
-            const newX = x + dx;
-            const newY = y + dy;
-            
-            // Check bounds
-            if (newX >= 0 && newX < this.heightData.width && 
-                newY >= 0 && newY < this.heightData.height) {
-                
-                neighbors.push({
-                    x: newX,
-                    y: newY,
-                    g: 0,
-                    h: 0,
-                    f: 0,
-                    parent: null
-                });
-            }
-        }
-        
-        return neighbors;
-    }
     
     /**
      * Calculate movement cost between two nodes
@@ -242,27 +195,7 @@ export class PathfindingEngine {
                point.y >= 0 && point.y < this.heightData.height;
     }
     
-    /**
-     * Generate a unique key for a node
-     */
-    private getNodeKey(node: PathNode): string {
-        return `${node.x},${node.y}`;
-    }
     
-    /**
-     * Reconstruct path from goal node back to start
-     */
-    private reconstructPath(goalNode: PathNode): Point[] {
-        const path: Point[] = [];
-        let currentNode: PathNode | null = goalNode;
-        
-        while (currentNode !== null) {
-            path.unshift({ x: currentNode.x, y: currentNode.y });
-            currentNode = currentNode.parent;
-        }
-        
-        return path;
-    }
     
     /**
      * Update pathfinding options
