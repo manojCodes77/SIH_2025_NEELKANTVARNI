@@ -54,7 +54,7 @@ class PlanetaryRoverSimulator {
     
     // Dashboard state
     private isDayMode = true;
-    private isRoverCameraVisible = false;
+    private isRoverCameraVisible = true;
     private roverCamera: THREE.PerspectiveCamera | null = null;
     private roverCameraRenderer: THREE.WebGLRenderer | null = null;
     
@@ -409,6 +409,14 @@ class PlanetaryRoverSimulator {
                 (obj as THREE.Mesh).receiveShadow = false;
             }
         });
+        
+        // Initialize rover camera and make it visible by default
+        this.setupRoverCamera();
+        const cameraDiv = document.getElementById('rover-camera');
+        if (cameraDiv) {
+            cameraDiv.style.display = 'block';
+        }
+        
         this.updateStatus('Rover spawned! Set path points to begin pathfinding.');
     }
     
@@ -766,12 +774,15 @@ class PlanetaryRoverSimulator {
     private toggleRoverCamera(): void {
         this.isRoverCameraVisible = !this.isRoverCameraVisible;
         const cameraDiv = document.getElementById('rover-camera');
+        const toggleBtn = this.toggleCameraBtn;
         
         if (this.isRoverCameraVisible) {
             if (cameraDiv) cameraDiv.style.display = 'block';
+            if (toggleBtn) toggleBtn.textContent = 'Rover Cam (ON)';
             this.setupRoverCamera();
         } else {
             if (cameraDiv) cameraDiv.style.display = 'none';
+            if (toggleBtn) toggleBtn.textContent = 'Rover Cam (OFF)';
         }
     }
 
