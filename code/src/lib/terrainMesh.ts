@@ -1,6 +1,85 @@
 import * as THREE from 'three';
 import { HeightData } from './terrainLoader.js';
 
+// Terrain Mesh Constants
+const TERRAIN_CONSTANTS = {
+  // Default values
+  DEFAULTS: {
+    SCALE: 1.0,
+    HEIGHT_SCALE: 1.0,
+    WIREFRAME: false,
+    COLOR_SCHEME: 'mars' as const,
+  },
+  
+  // Geometry properties
+  GEOMETRY: {
+    POSITION_COMPONENTS: 3,
+    UV_COMPONENTS: 2,
+    TRIANGLES_PER_QUAD: 2,
+    VERTICES_PER_TRIANGLE: 3,
+  },
+  
+  // Material properties
+  MATERIAL: {
+    ROUGHNESS: 0.9,
+    METALNESS: 0.0,
+    FALLBACK_COLOR: 0xcc6644,
+  },
+  
+  // Color thresholds for height-based coloring
+  HEIGHT_THRESHOLDS: {
+    LOW: 0.2,
+    MEDIUM_LOW: 0.4,
+    MEDIUM: 0.6,
+    MEDIUM_HIGH: 0.8,
+  },
+  
+  // Mars color scheme
+  MARS_COLORS: {
+    LOW: { r: 0.4, g: 0.2, b: 0.1 },           // Dark red/brown
+    MEDIUM_LOW: { r: 0.6, g: 0.3, b: 0.2 },   // Reddish brown
+    MEDIUM: { r: 0.8, g: 0.4, b: 0.2 },       // Orange-red
+    MEDIUM_HIGH: { r: 0.9, g: 0.5, b: 0.3 },  // Lighter orange
+    HIGH: { r: 1.0, g: 0.7, b: 0.4 },         // Light orange/yellow
+  },
+  
+  // Earth color scheme
+  EARTH_COLORS: {
+    LOW: { r: 0.2, g: 0.4, b: 0.8 },          // Water - blue
+    MEDIUM_LOW: { r: 0.8, g: 0.7, b: 0.4 },   // Sand - yellow
+    MEDIUM: { r: 0.3, g: 0.7, b: 0.3 },       // Grass - green
+    MEDIUM_HIGH: { r: 0.5, g: 0.5, b: 0.5 },  // Rock - gray
+    HIGH: { r: 0.9, g: 0.9, b: 0.9 },         // Snow - white
+  },
+  
+  // Slope coloring
+  SLOPE: {
+    MAX_DEGREES: 45,
+    HALF_THRESHOLD: 0.5,
+    GREEN_COLOR: { r: 0.2, g: 0.8, b: 0.2 },  // Flat areas
+    YELLOW_MODIFIER: { r: 0.6, g: 0.0, b: 0.0 }, // Added to green for yellow
+    RED_MODIFIER: { r: 0.0, g: 0.6, b: 0.0 },    // Subtracted from yellow for red
+  },
+  
+  // Coordinate calculations
+  COORDINATES: {
+    HALF_DIVISOR: 2,
+    MIN_HEIGHT_DIFF: 0.001, // Prevent division by zero
+  },
+  
+  // Neighbor offsets for slope calculation
+  NEIGHBOR_OFFSETS: {
+    ORTHOGONAL: [
+      { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+      { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+    ],
+    DIAGONAL: [
+      { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
+      { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
+    ],
+  },
+} as const;
+
 export interface TerrainMeshOptions {
     scale?: number;
     heightScale?: number;
@@ -18,10 +97,10 @@ export class TerrainMesh {
     constructor(heightData: HeightData, options: TerrainMeshOptions = {}) {
         this.heightData = heightData;
         this.options = {
-            scale: options.scale ?? 1.0,
-            heightScale: options.heightScale ?? 1.0,
-            wireframe: options.wireframe ?? false,
-            colorScheme: options.colorScheme ?? 'mars'
+            scale: options.scale ?? TERRAIN_CONSTANTS.DEFAULTS.SCALE,
+            heightScale: options.heightScale ?? TERRAIN_CONSTANTS.DEFAULTS.HEIGHT_SCALE,
+            wireframe: options.wireframe ?? TERRAIN_CONSTANTS.DEFAULTS.WIREFRAME,
+            colorScheme: options.colorScheme ?? TERRAIN_CONSTANTS.DEFAULTS.COLOR_SCHEME
         };
         
         this.geometry = this.createGeometry();
@@ -48,8 +127,8 @@ export class TerrainMesh {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const heightValue = data[y][x] * this.options.heightScale;
-                const worldX = (x - width / 2) * this.options.scale;
-                const worldZ = (y - height / 2) * this.options.scale;
+                const worldX = (x - width / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR) * this.options.scale;
+                const worldZ = (y - height / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR) * this.options.scale;
                 
                 vertices.push(worldX, heightValue, worldZ);
                 uvs.push(x / (width - 1), y / (height - 1));
@@ -71,8 +150,8 @@ export class TerrainMesh {
             }
         }
         
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, TERRAIN_CONSTANTS.GEOMETRY.POSITION_COMPONENTS));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, TERRAIN_CONSTANTS.GEOMETRY.UV_COMPONENTS));
         geometry.setIndex(indices);
         
         // Let Three.js compute smooth vertex normals
@@ -109,7 +188,7 @@ export class TerrainMesh {
                     const heightValue = data[y][x];
                     const normalizedHeight = Math.max(0, Math.min(1, 
                         (heightValue - this.heightData.minHeight) / 
-                        Math.max(0.001, this.heightData.maxHeight - this.heightData.minHeight)
+                        Math.max(TERRAIN_CONSTANTS.COORDINATES.MIN_HEIGHT_DIFF, this.heightData.maxHeight - this.heightData.minHeight)
                     ));
                     
                     const color = this.getColorForHeight(normalizedHeight);
@@ -121,16 +200,16 @@ export class TerrainMesh {
         // Ensure we have the right number of colors
         console.log(`Created ${colors.length / 3} vertex colors for ${width * height} vertices`);
         
-        this.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        this.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, TERRAIN_CONSTANTS.GEOMETRY.POSITION_COMPONENTS));
         
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
             wireframe: this.options.wireframe,
             side: THREE.DoubleSide,
-            roughness: 0.9,
-            metalness: 0.0,
+            roughness: TERRAIN_CONSTANTS.MATERIAL.ROUGHNESS,
+            metalness: TERRAIN_CONSTANTS.MATERIAL.METALNESS,
             // Fallback color in case vertex colors fail
-            color: 0xcc6644
+            color: TERRAIN_CONSTANTS.MATERIAL.FALLBACK_COLOR
         });
         
         return material;
@@ -156,21 +235,26 @@ export class TerrainMesh {
      * Mars-like color scheme
      */
     private getMarsColor(normalizedHeight: number): THREE.Color {
-        if (normalizedHeight < 0.2) {
+        if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.LOW) {
             // Low areas - darker red/brown
-            return new THREE.Color(0.4, 0.2, 0.1);
-        } else if (normalizedHeight < 0.4) {
+            const color = TERRAIN_CONSTANTS.MARS_COLORS.LOW;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM_LOW) {
             // Medium-low - reddish brown
-            return new THREE.Color(0.6, 0.3, 0.2);
-        } else if (normalizedHeight < 0.6) {
+            const color = TERRAIN_CONSTANTS.MARS_COLORS.MEDIUM_LOW;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM) {
             // Medium - orange-red
-            return new THREE.Color(0.8, 0.4, 0.2);
-        } else if (normalizedHeight < 0.8) {
+            const color = TERRAIN_CONSTANTS.MARS_COLORS.MEDIUM;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM_HIGH) {
             // Medium-high - lighter orange
-            return new THREE.Color(0.9, 0.5, 0.3);
+            const color = TERRAIN_CONSTANTS.MARS_COLORS.MEDIUM_HIGH;
+            return new THREE.Color(color.r, color.g, color.b);
         } else {
             // High areas - light orange/yellow
-            return new THREE.Color(1.0, 0.7, 0.4);
+            const color = TERRAIN_CONSTANTS.MARS_COLORS.HIGH;
+            return new THREE.Color(color.r, color.g, color.b);
         }
     }
     
@@ -178,21 +262,26 @@ export class TerrainMesh {
      * Earth-like color scheme
      */
     private getEarthColor(normalizedHeight: number): THREE.Color {
-        if (normalizedHeight < 0.2) {
+        if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.LOW) {
             // Water - blue
-            return new THREE.Color(0.2, 0.4, 0.8);
-        } else if (normalizedHeight < 0.4) {
+            const color = TERRAIN_CONSTANTS.EARTH_COLORS.LOW;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM_LOW) {
             // Sand - yellow
-            return new THREE.Color(0.8, 0.7, 0.4);
-        } else if (normalizedHeight < 0.6) {
+            const color = TERRAIN_CONSTANTS.EARTH_COLORS.MEDIUM_LOW;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM) {
             // Grass - green
-            return new THREE.Color(0.3, 0.7, 0.3);
-        } else if (normalizedHeight < 0.8) {
+            const color = TERRAIN_CONSTANTS.EARTH_COLORS.MEDIUM;
+            return new THREE.Color(color.r, color.g, color.b);
+        } else if (normalizedHeight < TERRAIN_CONSTANTS.HEIGHT_THRESHOLDS.MEDIUM_HIGH) {
             // Rock - gray
-            return new THREE.Color(0.5, 0.5, 0.5);
+            const color = TERRAIN_CONSTANTS.EARTH_COLORS.MEDIUM_HIGH;
+            return new THREE.Color(color.r, color.g, color.b);
         } else {
             // Snow - white
-            return new THREE.Color(0.9, 0.9, 0.9);
+            const color = TERRAIN_CONSTANTS.EARTH_COLORS.HIGH;
+            return new THREE.Color(color.r, color.g, color.b);
         }
     }
     
@@ -211,17 +300,24 @@ export class TerrainMesh {
         const current = data[y][x] * this.options.heightScale;
         const neighbors: Array<{ nx: number; ny: number; dist: number }> = [];
         
-        if (x > 0) neighbors.push({ nx: x - 1, ny: y, dist: this.options.scale });
-        if (x < width - 1) neighbors.push({ nx: x + 1, ny: y, dist: this.options.scale });
-        if (y > 0) neighbors.push({ nx: x, ny: y - 1, dist: this.options.scale });
-        if (y < height - 1) neighbors.push({ nx: x, ny: y + 1, dist: this.options.scale });
+        // Add orthogonal neighbors
+        TERRAIN_CONSTANTS.NEIGHBOR_OFFSETS.ORTHOGONAL.forEach(({ dx, dy }) => {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                neighbors.push({ nx, ny, dist: this.options.scale });
+            }
+        });
         
         // Include diagonals for a more representative slope
         const diag = this.options.scale * Math.SQRT2;
-        if (x > 0 && y > 0) neighbors.push({ nx: x - 1, ny: y - 1, dist: diag });
-        if (x < width - 1 && y > 0) neighbors.push({ nx: x + 1, ny: y - 1, dist: diag });
-        if (x > 0 && y < height - 1) neighbors.push({ nx: x - 1, ny: y + 1, dist: diag });
-        if (x < width - 1 && y < height - 1) neighbors.push({ nx: x + 1, ny: y + 1, dist: diag });
+        TERRAIN_CONSTANTS.NEIGHBOR_OFFSETS.DIAGONAL.forEach(({ dx, dy }) => {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                neighbors.push({ nx, ny, dist: diag });
+            }
+        });
         
         let maxSlope = 0;
         for (const { nx, ny, dist } of neighbors) {
@@ -237,15 +333,26 @@ export class TerrainMesh {
      * Map slope degrees to color (green flat → red steep)
      */
     private getSlopeColorDegrees(slopeDeg: number): THREE.Color {
-        // Clamp and normalize to 0..1 using 45° as a typical steepness cap
-        const t = Math.max(0, Math.min(1, slopeDeg / 45));
+        // Clamp and normalize to 0..1 using max degrees as steepness cap
+        const t = Math.max(0, Math.min(1, slopeDeg / TERRAIN_CONSTANTS.SLOPE.MAX_DEGREES));
         // Gradient: green (0) → yellow (0.5) → red (1)
-        if (t < 0.5) {
-            const u = t / 0.5; // 0..1
-            return new THREE.Color(0.2 + 0.6 * u, 0.8, 0.2); // green → yellowish
+        if (t < TERRAIN_CONSTANTS.SLOPE.HALF_THRESHOLD) {
+            const u = t / TERRAIN_CONSTANTS.SLOPE.HALF_THRESHOLD; // 0..1
+            const green = TERRAIN_CONSTANTS.SLOPE.GREEN_COLOR;
+            const yellowMod = TERRAIN_CONSTANTS.SLOPE.YELLOW_MODIFIER;
+            return new THREE.Color(
+                green.r + yellowMod.r * u,
+                green.g,
+                green.b
+            ); // green → yellowish
         } else {
-            const u = (t - 0.5) / 0.5; // 0..1
-            return new THREE.Color(0.8, 0.8 - 0.6 * u, 0.2); // yellow → red
+            const u = (t - TERRAIN_CONSTANTS.SLOPE.HALF_THRESHOLD) / TERRAIN_CONSTANTS.SLOPE.HALF_THRESHOLD; // 0..1
+            const redMod = TERRAIN_CONSTANTS.SLOPE.RED_MODIFIER;
+            return new THREE.Color(
+                0.8,
+                0.8 - redMod.g * u,
+                0.2
+            ); // yellow → red
         }
     }
     
@@ -296,8 +403,8 @@ export class TerrainMesh {
      */
     worldToHeightCoords(worldX: number, worldZ: number): { x: number; y: number } {
         const { width, height } = this.heightData;
-        const x = (worldX / this.options.scale) + width / 2;
-        const y = (worldZ / this.options.scale) + height / 2;
+        const x = (worldX / this.options.scale) + width / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR;
+        const y = (worldZ / this.options.scale) + height / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR;
         return { x, y };
     }
     
@@ -306,8 +413,8 @@ export class TerrainMesh {
      */
     heightToWorldCoords(x: number, y: number): { x: number; z: number } {
         const { width, height } = this.heightData;
-        const worldX = (x - width / 2) * this.options.scale;
-        const worldZ = (y - height / 2) * this.options.scale;
+        const worldX = (x - width / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR) * this.options.scale;
+        const worldZ = (y - height / TERRAIN_CONSTANTS.COORDINATES.HALF_DIVISOR) * this.options.scale;
         return { x: worldX, z: worldZ };
     }
     
