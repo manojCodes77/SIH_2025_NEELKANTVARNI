@@ -161,7 +161,7 @@ npm run preview
 ## 📊 Project Links
 
 - **SIH Presentation:** [Final SIH Presentation](https://github.com/manojCodes77/SIH_2025_NEELKANTVARNI/blob/main/files/internal_ppt_NEELKANTVARNI.pdf)
-- **Video Demonstration:** [Watch Video](https://www.youtube.com/watch?v=EaWfp8M-nYg)
+- **Video Demonstration:** [Watch Video](https://youtu.be/VXD2kN4Z1N4)
 - **Live Deployment:** [View Deployment](https://sih-2025-neelkantvarni.vercel.app/)
 - **Source Code:** [GitHub Repository](https://github.com/manojCodes77/SIH_2025_NEELKANTVARNI)
 
