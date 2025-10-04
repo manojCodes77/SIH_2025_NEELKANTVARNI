@@ -1,11 +1,7 @@
 import * as THREE from 'three';
 import { HeightData } from './terrainLoader.js';
 
-const Constants = {
 
-    
-
-} as const ; 
 
 
 
