@@ -17,7 +17,7 @@ class PlanetaryRoverSimulator {
     private pathfindingEngine: PathfindingEngine | null = null;
     private rover: Rover | null = null;
     private skyboxMaterial: THREE.ShaderMaterial | null = null;
-    private pathLine: THREE.Line | null = null;
+    private pathLine: THREE.Mesh | null = null;
     private startMarker: THREE.Mesh | null = null;
     private endMarker: THREE.Mesh | null = null;
     private raycaster: THREE.Raycaster;
@@ -34,6 +34,11 @@ class PlanetaryRoverSimulator {
     private composer: EffectComposer | null = null;
     private renderPass: RenderPass | null = null;
     private bloomPass: UnrealBloomPass | null = null;
+    
+    // Lighting references for day/night toggle
+    private ambientLight: THREE.AmbientLight | null = null;
+    private directionalLight: THREE.DirectionalLight | null = null;
+    private hemisphereLight: THREE.HemisphereLight | null = null;
     
     // UI Elements
     private loadingElement!: HTMLElement;
@@ -52,15 +57,25 @@ class PlanetaryRoverSimulator {
     private toggleCameraBtn: HTMLButtonElement | null = null;
     private dayNightBtn: HTMLButtonElement | null = null;
     private manualModeCheckbox: HTMLInputElement | null = null;
+    private demoModeBtn: HTMLButtonElement | null = null;
     
     // Dashboard state
     private isDayMode = true;
     private isRoverCameraVisible = true;
+    private isDemoMode = true; // Demo mode ON by default for judges
     private roverCamera: THREE.PerspectiveCamera | null = null;
     private roverCameraRenderer: THREE.WebGLRenderer | null = null;
     
     // Manual control state
     private pressedKeys: Set<string> = new Set();
+    
+    // Mars-specific constants (for future use)
+    // private static readonly MARS_GRAVITY = 3.71; // m/s²
+    // private static readonly MARS_ATMOSPHERE_DENSITY = 0.02; // kg/m³ (1% of Earth)
+    // private static readonly MARS_SURFACE_PRESSURE = 610; // Pa
+    // private static readonly MARS_DAY_LENGTH = 24.6; // hours
+    // private static readonly MARS_SURFACE_TEMP_MIN = -87; // °C
+    // private static readonly MARS_SURFACE_TEMP_MAX = -5; // °C
     
     constructor() {
         this.scene = new THREE.Scene();
@@ -74,6 +89,7 @@ class PlanetaryRoverSimulator {
         this.initializeScene();
         this.initializeUI();
         this.initializeControls();
+        this.initializeDemoMode();
     }
     
     /**
@@ -81,8 +97,8 @@ class PlanetaryRoverSimulator {
      */
     private initializeRenderer(): void {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        // Mars-themed sky color
-        this.renderer.setClearColor(0xCD853F); // Mars dusty orange-brown
+        // Mars-accurate sky color (much darker, more red)
+        this.renderer.setClearColor(0x2D1B00); // Mars dust storm red-brown
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -103,29 +119,29 @@ class PlanetaryRoverSimulator {
         this.createMarsAtmosphere();
         
         // Ambient light - reduced intensity
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
-        this.scene.add(ambientLight);
+        this.ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        this.scene.add(this.ambientLight);
         
         // Directional light (sun) - reduced intensity
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        directionalLight.position.set(50, 50, 50);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 500;
-        directionalLight.shadow.camera.left = -100;
-        directionalLight.shadow.camera.right = 100;
-        directionalLight.shadow.camera.top = 100;
-        directionalLight.shadow.camera.bottom = -100;
-        this.scene.add(directionalLight);
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        this.directionalLight.position.set(50, 50, 50);
+        this.directionalLight.castShadow = true;
+        this.directionalLight.shadow.mapSize.width = 2048;
+        this.directionalLight.shadow.mapSize.height = 2048;
+        this.directionalLight.shadow.camera.near = 0.5;
+        this.directionalLight.shadow.camera.far = 500;
+        this.directionalLight.shadow.camera.left = -100;
+        this.directionalLight.shadow.camera.right = 100;
+        this.directionalLight.shadow.camera.top = 100;
+        this.directionalLight.shadow.camera.bottom = -100;
+        this.scene.add(this.directionalLight);
         
-        // Atmosphere - Mars atmosphere fog
-        this.scene.fog = new THREE.FogExp2(0xCD853F, 0.002);
+        // Mars atmosphere fog (much thinner than Earth)
+        this.scene.fog = new THREE.FogExp2(0x2D1B00, 0.0005);
         
         // Environment map (procedural hemi light feel) - reduced intensity
-        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x8b4513, 0.3);
-        this.scene.add(hemi);
+        this.hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x8b4513, 0.3);
+        this.scene.add(this.hemisphereLight);
         
         // Position camera
         this.camera.position.set(40, 35, 40);
@@ -151,6 +167,7 @@ class PlanetaryRoverSimulator {
         this.toggleCameraBtn = document.getElementById('toggle-camera-btn') as HTMLButtonElement;
         this.dayNightBtn = document.getElementById('day-night-btn') as HTMLButtonElement;
         this.manualModeCheckbox = document.getElementById('manual-mode') as HTMLInputElement;
+        this.demoModeBtn = document.getElementById('demo-mode-btn') as HTMLButtonElement;
     }
     
     /**
@@ -186,16 +203,34 @@ class PlanetaryRoverSimulator {
         this.roverTypeSelect?.addEventListener('change', () => this.spawnRover());
         this.toggleCameraBtn?.addEventListener('click', () => this.toggleRoverCamera());
         this.dayNightBtn?.addEventListener('click', () => this.toggleDayNight());
+        this.demoModeBtn?.addEventListener('click', () => this.toggleDemoMode());
         
         // Keyboard controls
         document.addEventListener('keydown', (event) => this.onKeyDown(event));
         document.addEventListener('keyup', (event) => this.onKeyUp(event));
         
         // Mouse click events for pathfinding
-        this.renderer.domElement.addEventListener('click', (event) => this.onMouseClick(event));
+        this.renderer.domElement.addEventListener('click', (event: MouseEvent) => this.onMouseClick(event));
         
         // Window resize
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+    
+    /**
+     * Initialize demo mode UI state
+     */
+    private initializeDemoMode(): void {
+        // Set up initial demo mode UI state
+        if (this.isDemoMode) {
+            // Show demo mode indicator
+            const demoIndicator = document.getElementById('demo-mode-indicator');
+            if (demoIndicator) {
+                demoIndicator.style.display = 'flex';
+            }
+            
+            // Set initial status message
+            this.updateStatus('🚀 Demo Mode ON - Rover will move 50x faster for demonstrations!');
+        }
     }
     
     /**
@@ -213,10 +248,19 @@ class PlanetaryRoverSimulator {
                 this.terrainMesh = null;
             }
             this.clearPath();
-            // Generate procedural terrain based on UI controls
-            const noiseScaleVal = this.noiseScaleInput ? parseFloat(this.noiseScaleInput.value) : 0.05;
-            const octavesVal = this.octavesInput ? parseInt(this.octavesInput.value, 10) : 6;
-            const mountainHeightVal = this.mountainScaleInput ? parseFloat(this.mountainScaleInput.value) : 20;
+            // Generate procedural terrain based on UI controls with validation
+            const noiseScaleVal = this.validateTerrainParameter(
+                this.noiseScaleInput ? parseFloat(this.noiseScaleInput.value) : 0.05,
+                0.001, 0.5, 'noise scale'
+            );
+            const octavesVal = this.validateTerrainParameter(
+                this.octavesInput ? parseInt(this.octavesInput.value, 10) : 6,
+                1, 10, 'octaves'
+            );
+            const mountainHeightVal = this.validateTerrainParameter(
+                this.mountainScaleInput ? parseFloat(this.mountainScaleInput.value) : 20,
+                1, 100, 'mountain height'
+            );
             const heightData = TerrainLoader.generateProceduralTerrain(128, 128, {
                 noiseScale: noiseScaleVal,
                 octaves: octavesVal,
@@ -264,7 +308,12 @@ class PlanetaryRoverSimulator {
             }
             
         } catch (error) {
-            this.updateStatus(`Error loading terrain: ${error}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            console.error('Terrain loading error:', error);
+            this.updateStatus(`Error loading terrain: ${errorMessage}`);
+            
+            // Show user-friendly error message
+            this.showErrorMessage('Failed to load terrain. Please check the console for details.');
         } finally {
             this.loadingElement.style.display = 'none';
             
@@ -406,12 +455,15 @@ class PlanetaryRoverSimulator {
         
         this.scene.add(this.rover.getMesh());
         // Ensure rover is visible above fog and lit
-        this.rover.getMesh().traverse((obj) => {
+        this.rover.getMesh().traverse((obj: THREE.Object3D) => {
             if ((obj as any).isMesh) {
                 (obj as THREE.Mesh).castShadow = true;
                 (obj as THREE.Mesh).receiveShadow = false;
             }
         });
+        
+        // Set demo mode on rover if it's enabled
+        this.rover.setDemoMode(this.isDemoMode);
         
         // Initialize rover camera and make it visible by default
         this.setupRoverCamera();
@@ -485,9 +537,9 @@ class PlanetaryRoverSimulator {
         const tubeGeo = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, closed);
         const tubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x00ff88, emissiveIntensity: 0.7, roughness: 0.4, metalness: 0.2, transparent: true, opacity: 0.95 });
         
-        this.pathLine = new THREE.Mesh(tubeGeo, tubeMat) as unknown as THREE.Line;
-        (this.pathLine as unknown as THREE.Mesh).castShadow = false;
-        (this.pathLine as unknown as THREE.Mesh).receiveShadow = false;
+        this.pathLine = new THREE.Mesh(tubeGeo, tubeMat);
+        this.pathLine.castShadow = false;
+        this.pathLine.receiveShadow = false;
         this.scene.add(this.pathLine);
         
         // Set rover path if rover exists (use world-space coordinates)
@@ -564,8 +616,10 @@ class PlanetaryRoverSimulator {
     private updateManualMovement(deltaTime: number): void {
         if (!this.manualModeCheckbox?.checked || !this.rover || this.pressedKeys.size === 0) return;
 
-        const moveSpeed = 8.0 * deltaTime; // Units per second
-        const turnSpeed = 2.0 * deltaTime; // Radians per second
+        // Apply demo mode speed multiplier to manual movement
+        const speedMultiplier = this.isDemoMode ? 30.0 : 1.0; // 30x faster in demo mode for manual control
+        const moveSpeed = 8.0 * speedMultiplier * deltaTime; // Units per second
+        const turnSpeed = 2.0 * speedMultiplier * deltaTime; // Radians per second
         const currentPos = this.rover.getState().position;
         const currentRot = this.rover.getState().rotation.y;
 
@@ -640,6 +694,47 @@ class PlanetaryRoverSimulator {
     }
     
     /**
+     * Show error message to user
+     */
+    private showErrorMessage(message: string): void {
+        // Create or update error message element
+        let errorElement = document.getElementById('error-message');
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'error-message';
+            errorElement.className = 'absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-900 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            document.body.appendChild(errorElement);
+        }
+        
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (errorElement) {
+                errorElement.style.display = 'none';
+            }
+        }, 5000);
+    }
+    
+    /**
+     * Validate terrain parameter and clamp to valid range
+     */
+    private validateTerrainParameter(value: number, min: number, max: number, paramName: string): number {
+        if (isNaN(value) || !isFinite(value)) {
+            console.warn(`Invalid ${paramName} value: ${value}, using default`);
+            return (min + max) / 2;
+        }
+        
+        const clampedValue = Math.max(min, Math.min(max, value));
+        if (clampedValue !== value) {
+            console.warn(`${paramName} value ${value} clamped to ${clampedValue} (range: ${min}-${max})`);
+        }
+        
+        return clampedValue;
+    }
+    
+    /**
      * Handle window resize
      */
     private onWindowResize(): void {
@@ -668,15 +763,18 @@ class PlanetaryRoverSimulator {
         
         if (this.terrainMesh) {
             this.terrainMesh.dispose();
+            this.terrainMesh = null;
         }
         
         if (this.rover) {
             this.rover.dispose();
+            this.rover = null;
         }
         
         if (this.pathLine) {
             this.pathLine.geometry.dispose();
             (this.pathLine.material as THREE.Material).dispose();
+            this.pathLine = null;
         }
         
         this.clearMarkers();
@@ -834,13 +932,13 @@ class PlanetaryRoverSimulator {
     private setupRoverCamera(): void {
         if (!this.rover) return;
 
-        this.roverCamera = new THREE.PerspectiveCamera(60, 200/150, 0.1, 100);
+        this.roverCamera = new THREE.PerspectiveCamera(60, 400/300, 0.1, 100);
         
         const canvas = document.getElementById('rover-camera-canvas') as HTMLCanvasElement;
         if (!canvas) return;
 
         this.roverCameraRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        this.roverCameraRenderer.setSize(200, 150);
+        this.roverCameraRenderer.setSize(400, 300);
         this.roverCameraRenderer.setClearColor(this.renderer.getClearColor(new THREE.Color()));
     }
 
@@ -875,19 +973,111 @@ class PlanetaryRoverSimulator {
         this.isDayMode = !this.isDayMode;
         
         if (this.isDayMode) {
-            // Day mode - Update only skybox colors with orange tinge
-            // Update skybox colors for day
+            // Day mode - Mars daylight lighting
+            if (this.ambientLight) {
+                this.ambientLight.color.setHex(0x8B4513); // Mars dust color
+                this.ambientLight.intensity = 0.2; // Much dimmer than Earth
+            }
+            
+            if (this.directionalLight) {
+                this.directionalLight.color.setHex(0xFFB366); // Mars sun color (more orange)
+                this.directionalLight.intensity = 0.6; // Dimmer than Earth sun
+            }
+            
+            if (this.hemisphereLight) {
+                this.hemisphereLight.color.setHex(0x8B4513); // Mars dust sky
+                this.hemisphereLight.groundColor.setHex(0x654321); // Darker Mars ground
+                this.hemisphereLight.intensity = 0.15; // Much dimmer
+            }
+            
+            // Mars day skybox colors (dust storm orange-brown)
             if (this.skyboxMaterial) {
-                this.skyboxMaterial.uniforms.topColor.value.setHex(0x6BA3D6); // Light blue with orange tinge
-                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0xA8C8E1); // Sky blue with warm tinge
+                this.skyboxMaterial.uniforms.topColor.value.setHex(0x8B4513); // Mars dust orange
+                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0x654321); // Darker Mars dust
+            }
+            
+            // Mars atmosphere fog (thinner than Earth)
+            if (this.scene.fog) {
+                this.scene.fog.color.setHex(0x8B4513);
+                (this.scene.fog as THREE.FogExp2).density = 0.0005;
+            }
+            
+        } else {
+            // Night mode - Mars night (very dark, starlight only)
+            if (this.ambientLight) {
+                this.ambientLight.color.setHex(0x1A0F08); // Very dark Mars dust
+                this.ambientLight.intensity = 0.05; // Extremely dim starlight
+            }
+            
+            if (this.directionalLight) {
+                this.directionalLight.color.setHex(0x404080); // Dim starlight
+                this.directionalLight.intensity = 0.1; // Very dim
+            }
+            
+            if (this.hemisphereLight) {
+                this.hemisphereLight.color.setHex(0x1A0F08); // Dark Mars dust sky
+                this.hemisphereLight.groundColor.setHex(0x0A0502); // Very dark ground
+                this.hemisphereLight.intensity = 0.05; // Extremely dim
+            }
+            
+            // Mars night skybox colors (very dark with starlight)
+            if (this.skyboxMaterial) {
+                this.skyboxMaterial.uniforms.topColor.value.setHex(0x0A0502); // Near black
+                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0x050301); // Almost black
+            }
+            
+            // Mars night atmosphere (minimal fog)
+            if (this.scene.fog) {
+                this.scene.fog.color.setHex(0x0A0502);
+                (this.scene.fog as THREE.FogExp2).density = 0.002;
+            }
+        }
+        
+        // Update button text to show current mode
+        if (this.dayNightBtn) {
+            this.dayNightBtn.textContent = this.isDayMode ? 'Day/Night (Day)' : 'Day/Night (Night)';
+        }
+    }
+    
+    /**
+     * Toggle demo mode for faster rover movement
+     */
+    private toggleDemoMode(): void {
+        this.isDemoMode = !this.isDemoMode;
+        
+        if (this.isDemoMode) {
+            this.updateStatus('🚀 Demo Mode ON - Rover will move 50x faster for demonstrations!');
+            
+            // Update button appearance for demo mode
+            if (this.demoModeBtn) {
+                this.demoModeBtn.textContent = '🚀 Demo Mode (ON)';
+                this.demoModeBtn.className = 'w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 active:from-yellow-700 active:to-orange-700 text-white border border-yellow-400 active:border-yellow-300 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 font-semibold';
+            }
+            
+            // Show demo mode indicator
+            const demoIndicator = document.getElementById('demo-mode-indicator');
+            if (demoIndicator) {
+                demoIndicator.style.display = 'flex';
             }
         } else {
-            // Night mode - Update only skybox colors with subtle orange
-            // Update skybox colors for night
-            if (this.skyboxMaterial) {
-                this.skyboxMaterial.uniforms.topColor.value.setHex(0x1A0F08); // Very dark blue with orange tinge
-                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0x0A0502); // Near black with warm tinge
+            this.updateStatus('Demo Mode OFF - Rover speed back to realistic Mars values');
+            
+            // Update button appearance for normal mode
+            if (this.demoModeBtn) {
+                this.demoModeBtn.textContent = '🚀 Demo Mode (OFF)';
+                this.demoModeBtn.className = 'w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 active:from-green-800 active:to-green-700 text-white border border-green-500 active:border-green-400 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 font-semibold';
             }
+            
+            // Hide demo mode indicator
+            const demoIndicator = document.getElementById('demo-mode-indicator');
+            if (demoIndicator) {
+                demoIndicator.style.display = 'none';
+            }
+        }
+        
+        // Update rover speed if rover exists
+        if (this.rover) {
+            this.rover.setDemoMode(this.isDemoMode);
         }
     }
 
@@ -902,6 +1092,9 @@ class PlanetaryRoverSimulator {
         switch (key) {
             case 'c':
                 this.toggleRoverCamera();
+                return;
+            case 'd':
+                this.toggleDemoMode();
                 return;
             case 'l':
                 if (this.rover) {

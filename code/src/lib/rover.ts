@@ -34,6 +34,7 @@ export class Rover {
     private terrainHeightFunction: (x: number, z: number) => number;
     private animationMixer: THREE.AnimationMixer | null = null;
     private headlight: THREE.SpotLight | null = null;
+    private isDemoMode: boolean = false;
     
     constructor(options: RoverOptions = {}) {
         // Apply rover type presets
@@ -79,44 +80,44 @@ export class Rover {
                 return {
                     size: 1.2,
                     color: 0x44aa44,
-                    speed: 12.0,
+                    speed: 0.08, // Realistic Mars rover speed (m/s)
                     wheelCount: 4,
                     antennaHeight: 1.0,
                     maxSlope: 20,
-                    energyCapacity: 60,
+                    energyCapacity: 2000, // Realistic Wh capacity
                     energyEfficiency: 1.5
                 };
             case 'heavy':
                 return {
                     size: 2.5,
                     color: 0xaa4444,
-                    speed: 4.0,
+                    speed: 0.05, // Realistic Mars rover speed (m/s)
                     wheelCount: 8,
                     antennaHeight: 2.0,
                     maxSlope: 45,
-                    energyCapacity: 200,
+                    energyCapacity: 5000, // Realistic Wh capacity
                     energyEfficiency: 0.6
                 };
             case 'scientific':
                 return {
                     size: 1.8,
                     color: 0x4444aa,
-                    speed: 7.0,
+                    speed: 0.06, // Realistic Mars rover speed (m/s)
                     wheelCount: 6,
                     antennaHeight: 2.5,
                     maxSlope: 25,
-                    energyCapacity: 120,
+                    energyCapacity: 3000, // Realistic Wh capacity
                     energyEfficiency: 1.2
                 };
             default: // standard
                 return {
                     size: 2.0,
                     color: 0x666666,
-                    speed: 8.0,
+                    speed: 0.07, // Realistic Mars rover speed (m/s)
                     wheelCount: 6,
                     antennaHeight: 1.5,
                     maxSlope: 30,
-                    energyCapacity: 100,
+                    energyCapacity: 2500, // Realistic Wh capacity
                     energyEfficiency: 1.0
                 };
         }
@@ -374,8 +375,9 @@ export class Rover {
             const targetRotation = Math.atan2(direction.x, direction.z);
             this.setRotation(targetRotation);
             
-            // Move towards next point
-            const moveDistance = this.options.speed * deltaTime;
+            // Move towards next point - apply demo mode speed multiplier
+            const speedMultiplier = this.isDemoMode ? 50.0 : 1.0; // 50x faster in demo mode for judges
+            const moveDistance = this.options.speed * speedMultiplier * deltaTime;
             const distanceToNext = Math.sqrt(
                 Math.pow(nextPoint.x - this.state.position.x, 2) + 
                 Math.pow(nextPoint.y - this.state.position.z, 2)
@@ -417,21 +419,30 @@ export class Rover {
     }
     
     /**
-     * Calculate energy cost for movement between two points
+     * Calculate energy cost for movement between two points (realistic Mars rover values)
      */
     private calculateEnergyCost(from: Point, to: Point): number {
         const distance = Math.sqrt(
             Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2)
         );
         
-        // Base energy cost per unit distance
-        let energyCost = distance * 0.1;
+        // Base energy cost per unit distance (Wh per meter on Mars)
+        let energyCost = distance * 2.0; // Higher cost due to Mars conditions
         
-        // Additional cost for elevation changes
-        const heightDiff = Math.abs(this.terrainHeightFunction(to.x, to.y) - this.terrainHeightFunction(from.x, from.y));
-        energyCost += heightDiff * 0.5;
+        // Additional cost for elevation changes (uphill is much more expensive)
+        const heightDiff = this.terrainHeightFunction(to.x, to.y) - this.terrainHeightFunction(from.x, from.y);
+        if (heightDiff > 0) {
+            // Uphill movement - significantly more expensive
+            energyCost += heightDiff * 10.0;
+        } else {
+            // Downhill movement - some energy recovery
+            energyCost += Math.abs(heightDiff) * -2.0;
+        }
         
-        return energyCost;
+        // Energy efficiency factor
+        energyCost /= this.options.energyEfficiency;
+        
+        return Math.max(0, energyCost);
     }
     
     /**
@@ -442,7 +453,7 @@ export class Rover {
         
         const wheelRotationSpeed = this.options.speed * deltaTime * 2;
         
-        this.mesh.children.forEach((child, index) => {
+        this.mesh.children.forEach((child: THREE.Object3D, index: number) => {
             // Skip body, panels, antenna, and camera
             if (index < 5) return;
             
@@ -510,6 +521,20 @@ export class Rover {
     }
     
     /**
+     * Set demo mode for faster movement during demonstrations
+     */
+    setDemoMode(enabled: boolean): void {
+        this.isDemoMode = enabled;
+    }
+    
+    /**
+     * Get demo mode status
+     */
+    getDemoMode(): boolean {
+        return this.isDemoMode;
+    }
+    
+    /**
      * Create trail effect for rover movement
      */
     createTrail(): THREE.Line {
@@ -546,7 +571,7 @@ export class Rover {
         }
         
         // Update body material color
-        this.mesh.children.forEach((child, index) => {
+        this.mesh.children.forEach((child: THREE.Object3D, index: number) => {
             if (index === 0 && child instanceof THREE.Mesh) { // Main body
                 const material = child.material as THREE.MeshLambertMaterial;
                 material.color.setHex(color);
@@ -621,11 +646,11 @@ export class Rover {
      * Dispose of rover resources
      */
     dispose(): void {
-        this.mesh.traverse((child) => {
+        this.mesh.traverse((child: THREE.Object3D) => {
             if (child instanceof THREE.Mesh) {
                 child.geometry.dispose();
                 if (Array.isArray(child.material)) {
-                    child.material.forEach(material => material.dispose());
+                    child.material.forEach((material: THREE.Material) => material.dispose());
                 } else {
                     child.material.dispose();
                 }

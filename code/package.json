@@ -7,19 +7,29 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node src/tests/basic.test.ts",
+    "lint": "tsc --noEmit --strict",
+    "format": "prettier --write \"src/**/*.{ts,js,html,css}\""
   },
   "dependencies": {
-    "three": "^0.158.0",
-    "@types/three": "^0.158.0"
+    "@types/three": "^0.158.0",
+    "build": "^0.1.4",
+    "three": "^0.158.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-legacy": "^5.0.0",
     "typescript": "^5.2.2",
-    "vite": "^5.0.0",
-    "@vitejs/plugin-legacy": "^5.0.0"
+    "vite": "^5.0.0"
   },
-  "keywords": ["pathfinding", "rover", "mars", "threejs", "astar", "planetary"],
+  "keywords": [
+    "pathfinding",
+    "rover",
+    "mars",
+    "threejs",
+    "astar",
+    "planetary"
+  ],
   "author": "Planetary Rover Simulator",
   "license": "MIT"
 }
-

@@ -113,7 +113,7 @@ export class PathfindingEngine {
                 const nIdx = indexOf(nx, ny);
                 if (closed[nIdx]) continue;
                 
-                const moveCost = this.getMovementCost(current, { x: nx, y: ny, g: 0, h: 0, f: 0, parent: null });
+                const moveCost = this.getMovementCost(current, { x: nx, y: ny });
                 if (!isFinite(moveCost)) continue; // Too steep
                 
                 const tentativeG = current.g + moveCost;
@@ -143,7 +143,7 @@ export class PathfindingEngine {
     /**
      * Calculate movement cost between two nodes
      */
-    private getMovementCost(from: PathNode, to: PathNode): number {
+    private getMovementCost(from: Point, to: Point): number {
         const distance = this.getDistance(from, to);
         const slope = this.calculateSlope(from, to);
         
@@ -162,12 +162,13 @@ export class PathfindingEngine {
     /**
      * Calculate slope between two points
      */
-    private calculateSlope(from: PathNode, to: PathNode): number {
+    private calculateSlope(from: Point, to: Point): number {
         const heightFrom = this.heightData.data[from.y][from.x];
         const heightTo = this.heightData.data[to.y][to.x];
         const distance = this.getDistance(from, to);
         
-        const heightDiff = Math.abs(heightFrom - heightTo);
+        // Use signed height difference to distinguish uphill/downhill
+        const heightDiff = heightTo - heightFrom;
         return Math.atan(heightDiff / distance) * (180 / Math.PI);
     }
     

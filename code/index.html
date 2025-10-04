@@ -121,6 +121,72 @@
         canvas {
             display: block;
         }
+        
+        /* Button click feedback */
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        /* Enhanced button states */
+        .btn-feedback:active {
+            background-color: #4A90E2 !important;
+            border-color: #50E3C2 !important;
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.5) !important;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            #left-sidebar {
+                width: 280px !important;
+                max-height: calc(100vh - 20rem) !important;
+            }
+            
+            #mission-status, #instructions {
+                width: 280px !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #left-sidebar {
+                width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                position: relative !important;
+                margin: 0.5rem !important;
+            }
+            
+            #mission-status, #instructions {
+                width: 100% !important;
+                position: relative !important;
+                margin: 0.5rem !important;
+                height: auto !important;
+            }
+            
+            #rover-camera {
+                width: 200px !important;
+                height: 150px !important;
+                bottom: 1rem !important;
+                left: 1rem !important;
+            }
+        }
+        
+        /* Accessibility improvements */
+        button:focus {
+            outline: 2px solid #4A90E2;
+            outline-offset: 2px;
+        }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
     </style>
 </head>
 <body class="m-0 p-0 font-sans bg-gradient-to-br from-space-blue-dark to-space-blue overflow-hidden">
@@ -130,33 +196,82 @@
         </div>
         
         <!-- Unified Left Sidebar -->
-        <div id="left-sidebar" class="absolute z-50 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto m-2 rounded-xl shadow-2xl">
+        <div id="left-sidebar" class="absolute z-50 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-80 max-h-[calc(100vh-24rem)] overflow-y-auto m-2 rounded-xl shadow-2xl">
+                        <!-- Pathfinding Section -->
+                        <div class="control-group mb-2">
+                            <h3 class="m-0 mb-2 text-sm text-accent-cyan font-semibold">Mission Control</h3>
+                            
+                            <!-- Primary Action -->
+                             <button id="find-path-btn" disabled class="w-full bg-gradient-to-r from-mars-orange to-mars-red hover:from-mars-red hover:to-mars-rust active:from-accent-blue active:to-accent-cyan text-white font-semibold px-3 py-1.5 rounded-lg cursor-pointer text-xs transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-mars-orange/20 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mb-1">
+                                Find Optimal Path
+                            </button>
+                            
+                            <!-- Secondary Actions -->
+                             <div class="grid grid-cols-2 gap-1 mb-1">
+                                 <button id="animate-rover-btn" disabled class="bg-slate-700 hover:bg-slate-600 active:bg-accent-blue text-white border border-slate-600 hover:border-accent-blue active:border-accent-cyan px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600">
+                                    Animate
+                                </button>
+                                 <button id="clear-path-btn" class="bg-transparent hover:bg-red-900/20 active:bg-red-800/40 text-red-400 border border-red-800 hover:border-red-600 active:border-red-500 px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600 disabled:text-gray-500">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+            
+                        <!-- Rover Type Section -->
+                         <div class="control-group mb-2">
+                             <h3 class="m-0 mb-1 text-xs text-slate-300 font-semibold">Rover Configuration</h3>
+                            <div>
+                                 <label for="rover-type" class="block text-xs text-slate-400 mb-1 font-medium">Vehicle Type</label>
+                                <select id="rover-type" class="w-full bg-slate-800 text-white border border-slate-600 rounded-md px-3 py-2 text-xs focus:border-accent-blue focus:outline-none transition-colors duration-300">
+                                    <option value="standard">Standard Rover</option>
+                                    <option value="scout">Scout (Fast, Light)</option>
+                                    <option value="heavy">Heavy (Strong, Slow)</option>
+                                    <option value="scientific">Scientific (Sensors)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Control Section -->
+                         <div class="control-group mb-2">
+                             <div class="flex items-center p-1.5 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors duration-300">
+                                <input type="checkbox" id="manual-mode" class="mr-3 accent-mars-orange w-5 h-5 cursor-pointer"> 
+                                <div>
+                                    <h3 class="m-0 text-sm text-slate-200 font-medium">Manual Control</h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">Direct rover operation</p>
+                                </div>
+                            </div>
+                        </div>
             
             <!-- Controls Section -->
-            <div class="control-group mb-4">
-                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">System Controls</h3>
+            <div class="control-group mb-2">
+                <h3 class="m-0 mb-1 text-xs text-slate-300 font-semibold">System Controls</h3>
                 <div class="grid grid-cols-2 gap-2">
-                    <button id="reset-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                    <button id="reset-btn" class="bg-slate-700 hover:bg-slate-600 active:bg-accent-blue text-white border border-slate-600 hover:border-accent-blue active:border-accent-cyan px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300" aria-label="Reset terrain to default state">
                         Reset Terrain
                     </button>
-                    <button id="toggle-slope-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                    <button id="toggle-slope-btn" class="bg-slate-700 hover:bg-slate-600 active:bg-accent-blue text-white border border-slate-600 hover:border-accent-blue active:border-accent-cyan px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300">
                         Slope Map
                     </button>
-                    <button id="toggle-camera-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                    <button id="toggle-camera-btn" class="bg-slate-700 hover:bg-slate-600 active:bg-accent-blue text-white border border-slate-600 hover:border-accent-blue active:border-accent-cyan px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300">
                         Rover Cam
                     </button>
-                    <button id="day-night-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                    <button id="day-night-btn" class="bg-slate-700 hover:bg-slate-600 active:bg-accent-blue text-white border border-slate-600 hover:border-accent-blue active:border-accent-cyan px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300">
                         Day/Night
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <button id="demo-mode-btn" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 active:from-yellow-700 active:to-orange-700 text-white border border-yellow-400 active:border-yellow-300 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 font-semibold">
+                        🚀 Demo Mode (ON)
                     </button>
                 </div>
             </div>
 
             <!-- Terrain Section -->
-            <div class="control-group mb-4">
-                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">Terrain Generation</h3>
+            <div class="control-group mb-2">
+                <h3 class="m-0 mb-1 text-xs text-slate-300 font-semibold">Terrain Generation</h3>
                 <div class="space-y-2">
                     <div>
-                        <label for="terrain-preset" class="block text-xs text-slate-400 mb-2 font-medium">Environment Preset</label>
+                        <label for="terrain-preset" class="block text-xs text-slate-400 mb-1 font-medium">Environment Preset</label>
                         <select id="terrain-preset" class="w-full bg-slate-800 text-white border border-slate-600 rounded-md px-3 py-2 text-xs focus:border-accent-blue focus:outline-none transition-colors duration-300">
                             <option value="mars">Mars Plains</option>
                             <option value="mountains">Rocky Mountains</option>
@@ -166,175 +281,136 @@
                         </select>
                     </div>
                     <div>
-                        <label for="mountain-scale" class="block text-xs text-slate-400 mb-2 font-medium">Mountain Height</label>
+                        <label for="mountain-scale" class="block text-xs text-slate-400 mb-1 font-medium">Mountain Height</label>
                         <input id="mountain-scale" type="range" min="5" max="80" step="1" value="20" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
                     </div>
                     <div>
-                        <label for="noise-scale" class="block text-xs text-slate-400 mb-2 font-medium">Feature Density</label>
+                        <label for="noise-scale" class="block text-xs text-slate-400 mb-1 font-medium">Feature Density</label>
                         <input id="noise-scale" type="range" min="0.01" max="0.20" step="0.005" value="0.05" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
                     </div>
                     <div>
-                        <label for="octaves" class="block text-xs text-slate-400 mb-2 font-medium">Detail Level</label>
+                        <label for="octaves" class="block text-xs text-slate-400 mb-1 font-medium">Detail Level</label>
                         <input id="octaves" type="range" min="1" max="8" step="1" value="6" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
                     </div>
                 </div>
             </div>
             
-            <!-- Pathfinding Section -->
-            <div class="control-group mb-4">
-                <h3 class="m-0 mb-3 text-sm text-accent-cyan font-semibold">Mission Control</h3>
-                
-                <!-- Primary Action -->
-                <button id="find-path-btn" disabled class="w-full bg-gradient-to-r from-mars-orange to-mars-red hover:from-mars-red hover:to-mars-rust text-white font-semibold px-4 py-3 rounded-lg cursor-pointer text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-mars-orange/20 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mb-3">
-                    Find Optimal Path
-                </button>
-                
-                <!-- Secondary Actions -->
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <button id="animate-rover-btn" disabled class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600">
-                        Animate
-                    </button>
-                    <button id="clear-path-btn" class="bg-transparent hover:bg-red-900/20 text-red-400 border border-red-800 hover:border-red-600 px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600 disabled:text-gray-500">
-                        Clear
-                    </button>
-                </div>
-            </div>
 
-            <!-- Rover Type Section -->
-            <div class="control-group mb-4">
-                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">Rover Configuration</h3>
-                <div>
-                    <label for="rover-type" class="block text-xs text-slate-400 mb-2 font-medium">Vehicle Type</label>
-                    <select id="rover-type" class="w-full bg-slate-800 text-white border border-slate-600 rounded-md px-3 py-2 text-xs focus:border-accent-blue focus:outline-none transition-colors duration-300">
-                        <option value="standard">Standard Rover</option>
-                        <option value="scout">Scout (Fast, Light)</option>
-                        <option value="heavy">Heavy (Strong, Slow)</option>
-                        <option value="scientific">Scientific (Sensors)</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Manual Control Section -->
-            <div class="control-group mb-4">
-                <div class="flex items-center p-3 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors duration-300">
-                    <input type="checkbox" id="manual-mode" class="mr-3 accent-mars-orange w-5 h-5 cursor-pointer"> 
-                    <div>
-                        <h3 class="m-0 text-sm text-slate-200 font-medium">Manual Control</h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Direct rover operation</p>
-                    </div>
-                </div>
-            </div>
 
          
         </div>
         
-        <!-- Instructions Panel -->
-        <div id="instructions" class="absolute top-0 right-0 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-72 0 m-2 rounded-xl shadow-2xl">
-            <div class="flex items-center justify-between cursor-pointer" onclick="toggleInstructions()">
-                <h4 class="m-0 text-mars-orange text-sm font-semibold flex items-center">
-                    Instructions and Controls 
-                </h4>
-                <span id="instructions-arrow" class="text-mars-orange text-sm transition-transform duration-300">▼</span>
-            </div>
-            <div id="instructions-content" class="mt-3 transition-all duration-300 overflow-hidden">
-                <div class="space-y-2">
-                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Reset Terrain” to load heightmap</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set start point (green)</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set end point (red)</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Find Path” to calculate route</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Animate” to watch rover move</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Use mouse to rotate/zoom view</div>
-                    <hr class="border-slate-700 my-2">
-                    <div class="text-xs text-slate-400 font-medium">Manual Controls:</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• WASD: Drive rover manually</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• Space: Stop rover</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">• C: Toggle rover camera</div>
-                </div>
-            </div>
+         <!-- Mission Status Panel (Top Right - 50% height) -->
+         <div id="mission-status" class="absolute top-0 right-0 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-72 m-2 rounded-xl shadow-2xl" style="height: 50vh; overflow-y: auto;">
+             <h3 class="m-0 mb-3 text-sm text-slate-300 font-semibold">Mission Status</h3>
+             
+             <!-- Mission Data -->
+             <div class="bg-slate-800/50 rounded-lg p-3 mb-3 border border-slate-700">
+                 <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Telemetry</h4>
+                 <div class="grid grid-cols-2 gap-2 text-xs">
+                     <div class="flex flex-col">
+                         <span class="text-slate-400">Mission Time</span>
+                         <span class="text-white font-mono" id="mission-time">00:00</span>
+                     </div>
+                     <div class="flex flex-col" id="demo-mode-indicator" style="display: flex;">
+                         <span class="text-yellow-400 text-xs font-semibold">🚀 DEMO MODE</span>
+                     </div>
+                     <div class="flex flex-col">
+                         <span class="text-slate-400">Status</span>
+                         <span class="text-accent-cyan font-medium" id="rover-status">Standby</span>
+                     </div>
+                     <div class="flex flex-col">
+                         <span class="text-slate-400">Distance</span>
+                         <span class="text-white font-mono" id="distance-traveled">0.0m</span>
+                     </div>
+                     <div class="flex flex-col">
+                         <span class="text-slate-400">Speed</span>
+                         <span class="text-white font-mono" id="current-speed">0.0 m/s</span>
+                     </div>
+                 </div>
+                 <div class="mt-2 pt-2 border-t border-slate-700">
+                     <div class="flex justify-between text-xs">
+                         <span class="text-slate-400">Elevation</span>
+                         <span class="text-white font-mono" id="current-elevation">0.0m</span>
+                     </div>
+                 </div>
+             </div>
 
-               <!-- Rover Stats Section -->
-            <div class="control-group mb-6">
-                <h3 class="m-0 mb-3 text-sm text-slate-300 font-semibold">Mission Status</h3>
-                
-                <!-- Mission Data -->
-                <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700">
-                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Telemetry</h4>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="flex flex-col">
-                            <span class="text-slate-400">Mission Time</span>
-                            <span class="text-white font-mono" id="mission-time">00:00</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-slate-400">Status</span>
-                            <span class="text-accent-cyan font-medium" id="rover-status">Standby</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-slate-400">Distance</span>
-                            <span class="text-white font-mono" id="distance-traveled">0.0m</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-slate-400">Speed</span>
-                            <span class="text-white font-mono" id="current-speed">0.0 m/s</span>
-                        </div>
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-slate-700">
-                        <div class="flex justify-between text-xs">
-                            <span class="text-slate-400">Elevation</span>
-                            <span class="text-white font-mono" id="current-elevation">0.0m</span>
-                        </div>
-                    </div>
-                </div>
+             <!-- Energy System -->
+             <div class="bg-slate-800/50 rounded-lg p-3 mb-3 border border-slate-700">
+                 <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Power Systems</h4>
+                 <div class="space-y-2">
+                     <div>
+                         <div class="flex justify-between text-xs mb-1">
+                             <span class="text-slate-400">Battery Level</span>
+                             <span class="text-white font-mono" id="energy-value">100%</span>
+                         </div>
+                         <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                             <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="energy-fill" style="width: 100%"></div>
+                         </div>
+                     </div>
+                     <div class="flex justify-between text-xs pt-1">
+                         <span class="text-slate-400">Solar Input</span>
+                         <span class="text-green-400 font-mono" id="solar-input">+2.5 W</span>
+                     </div>
+                 </div>
+             </div>
 
-                <!-- Energy System -->
-                <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700">
-                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Power Systems</h4>
-                    <div class="space-y-2">
-                        <div>
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-slate-400">Battery Level</span>
-                                <span class="text-white font-mono" id="energy-value">100%</span>
-                            </div>
-                            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="energy-fill" style="width: 100%"></div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-xs pt-1">
-                            <span class="text-slate-400">Solar Input</span>
-                            <span class="text-green-400 font-mono" id="solar-input">+2.5 W</span>
-                        </div>
-                    </div>
-                </div>
+             <!-- Path Analysis -->
+             <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                 <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Path Analysis</h4>
+                 <div class="space-y-2">
+                     <div>
+                         <div class="flex justify-between text-xs mb-1">
+                             <span class="text-slate-400">Route Efficiency</span>
+                             <span class="text-white font-mono" id="path-efficiency">100%</span>
+                         </div>
+                         <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                             <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="efficiency-fill" style="width: 100%"></div>
+                         </div>
+                     </div>
+                     <div class="flex justify-between text-xs pt-1">
+                         <span class="text-slate-400">Waypoints</span>
+                         <span class="text-accent-blue font-mono" id="waypoints-remaining">0/0</span>
+                     </div>
+                 </div>
+             </div>
 
-                <!-- Path Analysis -->
-                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Path Analysis</h4>
-                    <div class="space-y-2">
-                        <div>
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-slate-400">Route Efficiency</span>
-                                <span class="text-white font-mono" id="path-efficiency">100%</span>
-                            </div>
-                            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="efficiency-fill" style="width: 100%"></div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-xs pt-1">
-                            <span class="text-slate-400">Waypoints</span>
-                            <span class="text-accent-blue font-mono" id="waypoints-remaining">0/0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+             <!-- Status Section -->
+             <div class="bg-slate-800/70 border border-slate-600 rounded-lg p-3 text-xs text-slate-300 mt-3" id="status">
+                 System ready - Load terrain to begin
+             </div>
+         </div>
 
-            <!-- Status Section -->
-            <div class="bg-slate-800/70 border border-slate-600 rounded-lg p-3 text-xs text-slate-300" id="status">
-                System ready - Load terrain to begin
-            </div>
-        </div>
+         <!-- Instructions Panel (Bottom Right - 30% height) -->
+         <div id="instructions" class="absolute right-0 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-72 m-2 rounded-xl shadow-2xl" style="top: calc(50vh + 130px); height: 30vh; overflow-y: auto;">
+             <div class="flex items-center justify-between cursor-pointer" onclick="toggleInstructions()">
+                 <h4 class="m-0 text-mars-orange text-sm font-semibold flex items-center">
+                     Instructions and Controls 
+                 </h4>
+                 <span id="instructions-arrow" class="text-mars-orange text-sm transition-transform duration-300">▼</span>
+             </div>
+             <div id="instructions-content" class="mt-3 transition-all duration-300 overflow-hidden">
+                 <div class="space-y-2">
+                     <div class="text-xs text-slate-300 leading-relaxed">• Click "Reset Terrain" to load heightmap</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set start point (green)</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set end point (red)</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Click "Find Path" to calculate route</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Click "Animate" to watch rover move</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Use mouse to rotate/zoom view</div>
+                     <hr class="border-slate-700 my-2">
+                     <div class="text-xs text-slate-400 font-medium">Manual Controls:</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• WASD: Drive rover manually</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• Space: Stop rover</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• C: Toggle rover camera</div>
+                     <div class="text-xs text-slate-300 leading-relaxed">• D: Toggle demo mode (50x faster movement)</div>
+                 </div>
+             </div>
+         </div>
         
         <!-- Rover Camera PiP -->
-        <div id="rover-camera" class="absolute bottom-5 left-5 w-70 h-100 border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900/80 backdrop-blur-sm shadow-xl">
-            <canvas id="rover-camera-canvas" width="300" height="225" class="w-full h-full"></canvas>
+        <div id="rover-camera" class="absolute bottom-5 left-5 w-80 h-120 border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900/80 backdrop-blur-sm shadow-xl z-40">
+            <canvas id="rover-camera-canvas" width="400" height="300" class="w-full h-full"></canvas>
             <div class="absolute top-2 left-2 text-xs text-slate-300 font-medium">Rover Cam</div>
         </div>
     </div>
