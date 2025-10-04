@@ -4,408 +4,375 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planetary Rover Pathfinding Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        // Mars-inspired color palette
+                        'mars': {
+                            red: '#CD5C5C',
+                            orange: '#FF8C42',
+                            rust: '#B85450',
+                            sand: '#D2B48C'
+                        },
+                        // Space-inspired colors
+                        'space': {
+                            blue: '#1B263B',
+                            cyan: '#0D1B2A',
+                            dark: '#0F172A'
+                        },
+                        // Accent colors
+                        'accent': {
+                            blue: '#4A90E2',
+                            cyan: '#50E3C2',
+                            green: '#10B981'
+                        }
+                    },
+                    backdropBlur: {
+                        'xl': '20px'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(80, 227, 194, 0.4)' },
+                            '100%': { boxShadow: '0 0 20px rgba(80, 227, 194, 0.6)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            overflow: hidden;
+        /* Custom scrollbar styles (not available in Tailwind) */
+        *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
         
-        #app {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
+        *::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 3px;
         }
         
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 260px;
-            max-height: 50vh;
-            overflow-y: auto;
-        }
-        
-        .control-group {
-            margin-bottom: 8px;
-        }
-        
-        .control-group h3 {
-            margin: 0 0 6px 0;
-            font-size: 13px;
-            color: #64b5f6;
-        }
-        
-        button {
-            background: linear-gradient(45deg, #4caf50, #45a049);
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            margin: 2px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
+        *::-webkit-scrollbar-thumb {
+            background: rgba(74, 144, 226, 0.3);
+            border-radius: 3px;
             transition: all 0.3s ease;
         }
         
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        *::-webkit-scrollbar-thumb:hover {
+            background: rgba(74, 144, 226, 0.6);
         }
         
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
+        /* UI overlay specific scrollbar */
+        #ui-overlay::-webkit-scrollbar {
+            width: 8px;
         }
         
-        .status {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            font-size: 12px;
+        #ui-overlay::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #4A90E2 0%, #42a5f5 100%);
+            border-radius: 4px;
         }
         
-        #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 280px;
-            font-size: 11px;
+        #ui-overlay::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+            box-shadow: 0 0 8px rgba(74, 144, 226, 0.4);
         }
-
-        /* Mission Dashboard */
-        #mission-dashboard {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            width: 260px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-        }
-
-        .dashboard-section {
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .dashboard-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .dashboard-section h4 {
-            margin: 0 0 4px 0;
-            font-size: 10px;
-            color: #64b5f6;
-            text-transform: uppercase;
-        }
-
-        .metric {
-            display: flex;
-            justify-content: space-between;
-            margin: 2px 0;
-            font-size: 10px;
-        }
-
-        .metric-label {
-            color: #ccc;
-        }
-
-        .metric-value {
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .energy-bar, .efficiency-bar {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 3px 0;
-        }
-
-        .energy-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44);
-            transition: width 0.3s ease;
-        }
-
-        .efficiency-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4444ff, #44aaff, #44ff44);
-            transition: width 0.3s ease;
-        }
-
-        /* Rover Camera PiP */
-        #rover-camera {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 200px;
-            height: 150px;
+        
+        /* Range slider styling */
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4A90E2, #42a5f5);
+            cursor: pointer;
             border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            overflow: hidden;
-            background: #000;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            background: linear-gradient(135deg, #42a5f5, #1e88e5);
+            box-shadow: 0 0 8px rgba(74, 144, 226, 0.6);
+        }
+        
+        .slider::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4A90E2, #42a5f5);
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Three.js canvas fullscreen */
+        canvas {
             display: block;
-        }
-
-        #rover-camera canvas {
-            width: 100%;
-            height: 100%;
-        }
-        
-        #instructions h4 {
-            margin: 0 0 6px 0;
-            color: #ffd54f;
-            font-size: 12px;
-        }
-
-        #instructions ul {
-            margin: 0;
-            padding-left: 16px;
-        }
-
-        #instructions li {
-            margin-bottom: 3px;
-            font-size: 10px;
-        }
-
-        /* Slope legend */
-        #slope-legend {
-            position: absolute;
-            right: 20px;
-            top: 420px;
-            z-index: 101;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-            width: 220px;
-            display: none;
-        }
-        #slope-gradient {
-            height: 12px;
-            width: 100%;
-            border-radius: 6px;
-            background: linear-gradient(90deg, #33cc55 0%, #cccc33 50%, #cc3322 100%);
-            margin: 6px 0 2px 0;
-        }
-        #slope-legend .labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            opacity: 0.9;
-        }
-        
-        #instructions ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        #instructions li {
-            margin-bottom: 5px;
-            font-size: 12px;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 18px;
-            z-index: 200;
         }
     </style>
 </head>
-<body>
-    <div id="app">
-        <div class="loading" id="loading">
+<body class="m-0 p-0 font-sans bg-gradient-to-br from-space-blue-dark to-space-blue overflow-hidden">
+    <div id="app" class="w-screen h-screen relative">
+        <div class="loading absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-lg z-50" id="loading">
             Loading Planetary Rover Simulator...
         </div>
         
-        <div id="ui-overlay">
-            <div class="control-group">
-                <h3>🎮 Controls</h3>
-                <button id="reset-btn">Reset Terrain</button>
-                <button id="toggle-slope-btn">Toggle Slope Map</button>
-                <button id="toggle-camera-btn">Rover Cam (ON)</button>
-                <button id="day-night-btn">Day/Night</button>
+        <!-- Unified Left Sidebar -->
+        <div id="left-sidebar" class="absolute z-50 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto m-2 rounded-xl shadow-2xl">
+            
+            <!-- Controls Section -->
+            <div class="control-group mb-4">
+                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">System Controls</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="reset-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                        Reset Terrain
+                    </button>
+                    <button id="toggle-slope-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                        Slope Map
+                    </button>
+                    <button id="toggle-camera-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                        Rover Cam
+                    </button>
+                    <button id="day-night-btn" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-2 py-1.5 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue">
+                        Day/Night
+                    </button>
+                </div>
             </div>
 
-            <div class="control-group">
-                <h3>⛰️ Terrain</h3>
+            <!-- Terrain Section -->
+            <div class="control-group mb-4">
+                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">Terrain Generation</h3>
+                <div class="space-y-2">
+                    <div>
+                        <label for="terrain-preset" class="block text-xs text-slate-400 mb-2 font-medium">Environment Preset</label>
+                        <select id="terrain-preset" class="w-full bg-slate-800 text-white border border-slate-600 rounded-md px-3 py-2 text-xs focus:border-accent-blue focus:outline-none transition-colors duration-300">
+                            <option value="mars">Mars Plains</option>
+                            <option value="mountains">Rocky Mountains</option>
+                            <option value="hills">Rolling Hills</option>
+                            <option value="canyon">Canyon Lands</option>
+                            <option value="custom" selected>Custom Terrain</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mountain-scale" class="block text-xs text-slate-400 mb-2 font-medium">Mountain Height</label>
+                        <input id="mountain-scale" type="range" min="5" max="80" step="1" value="20" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
+                    </div>
+                    <div>
+                        <label for="noise-scale" class="block text-xs text-slate-400 mb-2 font-medium">Feature Density</label>
+                        <input id="noise-scale" type="range" min="0.01" max="0.20" step="0.005" value="0.05" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
+                    </div>
+                    <div>
+                        <label for="octaves" class="block text-xs text-slate-400 mb-2 font-medium">Detail Level</label>
+                        <input id="octaves" type="range" min="1" max="8" step="1" value="6" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"/>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pathfinding Section -->
+            <div class="control-group mb-4">
+                <h3 class="m-0 mb-3 text-sm text-accent-cyan font-semibold">Mission Control</h3>
+                
+                <!-- Primary Action -->
+                <button id="find-path-btn" disabled class="w-full bg-gradient-to-r from-mars-orange to-mars-red hover:from-mars-red hover:to-mars-rust text-white font-semibold px-4 py-3 rounded-lg cursor-pointer text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-mars-orange/20 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mb-3">
+                    Find Optimal Path
+                </button>
+                
+                <!-- Secondary Actions -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button id="animate-rover-btn" disabled class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 hover:border-accent-blue disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600">
+                        Animate
+                    </button>
+                    <button id="clear-path-btn" class="bg-transparent hover:bg-red-900/20 text-red-400 border border-red-800 hover:border-red-600 px-3 py-2 rounded cursor-pointer text-xs transition-all duration-300 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:border-gray-600 disabled:text-gray-500">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rover Type Section -->
+            <div class="control-group mb-4">
+                <h3 class="m-0 mb-2 text-xs text-slate-300 font-semibold">Rover Configuration</h3>
                 <div>
-                    <label for="terrain-preset">Preset</label>
-                    <select id="terrain-preset">
-                        <option value="mars">Mars Plains</option>
-                        <option value="mountains">Rocky Mountains</option>
-                        <option value="hills">Rolling Hills</option>
-                        <option value="canyon">Canyon Lands</option>
-                        <option value="custom" selected>Custom</option>
+                    <label for="rover-type" class="block text-xs text-slate-400 mb-2 font-medium">Vehicle Type</label>
+                    <select id="rover-type" class="w-full bg-slate-800 text-white border border-slate-600 rounded-md px-3 py-2 text-xs focus:border-accent-blue focus:outline-none transition-colors duration-300">
+                        <option value="standard">Standard Rover</option>
+                        <option value="scout">Scout (Fast, Light)</option>
+                        <option value="heavy">Heavy (Strong, Slow)</option>
+                        <option value="scientific">Scientific (Sensors)</option>
                     </select>
                 </div>
-                <div style="margin-bottom: 6px;">
-                    <label for="mountain-scale" style="font-size: 10px;">Mountain Height</label>
-                    <input id="mountain-scale" type="range" min="5" max="80" step="1" value="20" style="width: 100%; margin: 2px 0;"/>
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <label for="noise-scale" style="font-size: 10px;">Feature Size</label>
-                    <input id="noise-scale" type="range" min="0.01" max="0.20" step="0.005" value="0.05" style="width: 100%; margin: 2px 0;"/>
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <label for="octaves" style="font-size: 10px;">Octaves</label>
-                    <input id="octaves" type="range" min="1" max="8" step="1" value="6" style="width: 100%; margin: 2px 0;"/>
-                </div>
-                <small style="font-size: 9px;">💡 Try different presets or customize your own terrain!</small>
             </div>
             
-            <div class="control-group">
-                <h3>🗺️ Pathfinding</h3>
-                <button id="find-path-btn" disabled>Find Path</button>
-                <button id="animate-rover-btn" disabled>Animate Rover</button>
-                <button id="clear-path-btn">Clear Path</button>
+            <!-- Manual Control Section -->
+            <div class="control-group mb-4">
+                <div class="flex items-center p-3 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors duration-300">
+                    <input type="checkbox" id="manual-mode" class="mr-3 accent-mars-orange w-5 h-5 cursor-pointer"> 
+                    <div>
+                        <h3 class="m-0 text-sm text-slate-200 font-medium">Manual Control</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Direct rover operation</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="control-group">
-                <h3>🤖 Rover Type</h3>
-                <select id="rover-type">
-                    <option value="standard">Standard Rover</option>
-                    <option value="scout">Scout (Fast, Light)</option>
-                    <option value="heavy">Heavy (Strong, Slow)</option>
-                    <option value="scientific">Scientific (Sensors)</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <h3>🎮 Manual Control</h3>
-                <small>WASD: Drive | Space: Stop | C: Camera</small>
-                <div>
-                    <label><input type="checkbox" id="manual-mode"> Manual Drive Mode</label>
-                </div>
-            </div>
-            
-            <div class="status" id="status">
-                Ready to load terrain...
-            </div>
+         
         </div>
         
-        <!-- Mission Dashboard -->
-        <div id="mission-dashboard">
-            <div class="dashboard-section">
-                <h4>🚀 Mission Status</h4>
-                <div class="metric">
-                    <span class="metric-label">Mission Time:</span>
-                    <span class="metric-value" id="mission-time">00:00</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Rover Status:</span>
-                    <span class="metric-value" id="rover-status">Standby</span>
+        <!-- Instructions Panel -->
+        <div id="instructions" class="absolute top-0 right-0 bg-slate-900/95 text-white p-4 backdrop-blur-lg border border-slate-700/50 w-72 0 m-2 rounded-xl shadow-2xl">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleInstructions()">
+                <h4 class="m-0 text-mars-orange text-sm font-semibold flex items-center">
+                    Instructions and Controls 
+                </h4>
+                <span id="instructions-arrow" class="text-mars-orange text-sm transition-transform duration-300">▼</span>
+            </div>
+            <div id="instructions-content" class="mt-3 transition-all duration-300 overflow-hidden">
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Reset Terrain” to load heightmap</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set start point (green)</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Click terrain to set end point (red)</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Find Path” to calculate route</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Click “Animate” to watch rover move</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Use mouse to rotate/zoom view</div>
+                    <hr class="border-slate-700 my-2">
+                    <div class="text-xs text-slate-400 font-medium">Manual Controls:</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• WASD: Drive rover manually</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• Space: Stop rover</div>
+                    <div class="text-xs text-slate-300 leading-relaxed">• C: Toggle rover camera</div>
                 </div>
             </div>
-            
-            <div class="dashboard-section">
-                <h4>⚡ Energy System</h4>
-                <div class="energy-bar">
-                    <div class="energy-fill" id="energy-fill" style="width: 100%"></div>
+
+               <!-- Rover Stats Section -->
+            <div class="control-group mb-6">
+                <h3 class="m-0 mb-3 text-sm text-slate-300 font-semibold">Mission Status</h3>
+                
+                <!-- Mission Data -->
+                <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700">
+                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Telemetry</h4>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="flex flex-col">
+                            <span class="text-slate-400">Mission Time</span>
+                            <span class="text-white font-mono" id="mission-time">00:00</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-slate-400">Status</span>
+                            <span class="text-accent-cyan font-medium" id="rover-status">Standby</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-slate-400">Distance</span>
+                            <span class="text-white font-mono" id="distance-traveled">0.0m</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-slate-400">Speed</span>
+                            <span class="text-white font-mono" id="current-speed">0.0 m/s</span>
+                        </div>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-slate-700">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Elevation</span>
+                            <span class="text-white font-mono" id="current-elevation">0.0m</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">Battery:</span>
-                    <span class="metric-value" id="energy-value">100%</span>
+
+                <!-- Energy System -->
+                <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700">
+                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Power Systems</h4>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Battery Level</span>
+                                <span class="text-white font-mono" id="energy-value">100%</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="energy-fill" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-xs pt-1">
+                            <span class="text-slate-400">Solar Input</span>
+                            <span class="text-green-400 font-mono" id="solar-input">+2.5 W</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">Solar Input:</span>
-                    <span class="metric-value" id="solar-input">+2.5 W</span>
+
+                <!-- Path Analysis -->
+                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <h4 class="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Path Analysis</h4>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Route Efficiency</span>
+                                <span class="text-white font-mono" id="path-efficiency">100%</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-slate-500 via-slate-400 to-mars-orange transition-all duration-500" id="efficiency-fill" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-xs pt-1">
+                            <span class="text-slate-400">Waypoints</span>
+                            <span class="text-accent-blue font-mono" id="waypoints-remaining">0/0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="dashboard-section">
-                <h4>📊 Navigation</h4>
-                <div class="metric">
-                    <span class="metric-label">Distance:</span>
-                    <span class="metric-value" id="distance-traveled">0.0m</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Speed:</span>
-                    <span class="metric-value" id="current-speed">0.0 m/s</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Elevation:</span>
-                    <span class="metric-value" id="current-elevation">0.0m</span>
-                </div>
-            </div>
-            
-            <div class="dashboard-section">
-                <h4>🎯 Path Analysis</h4>
-                <div class="efficiency-bar">
-                    <div class="efficiency-fill" id="efficiency-fill" style="width: 100%"></div>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Efficiency:</span>
-                    <span class="metric-value" id="path-efficiency">100%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Waypoints:</span>
-                    <span class="metric-value" id="waypoints-remaining">0/0</span>
-                </div>
+
+            <!-- Status Section -->
+            <div class="bg-slate-800/70 border border-slate-600 rounded-lg p-3 text-xs text-slate-300" id="status">
+                System ready - Load terrain to begin
             </div>
         </div>
         
         <!-- Rover Camera PiP -->
-        <div id="rover-camera">
-            <canvas id="rover-camera-canvas" width="200" height="150"></canvas>
-        </div>
-        
-        <div id="instructions">
-            <h4>🎯 Instructions</h4>
-            <ul>
-                <li>Click "Reset Terrain" to load heightmap</li>
-                <li>Click terrain to set start point (green)</li>
-                <li>Click terrain to set end point (red)</li>
-                <li>Click "Find Path" to calculate route</li>
-                <li>Click "Animate Rover" to watch it move</li>
-                <li>Use mouse to rotate/zoom view</li>
-            </ul>
+        <div id="rover-camera" class="absolute bottom-5 left-5 w-70 h-100 border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900/80 backdrop-blur-sm shadow-xl">
+            <canvas id="rover-camera-canvas" width="300" height="225" class="w-full h-full"></canvas>
+            <div class="absolute top-2 left-2 text-xs text-slate-300 font-medium">Rover Cam</div>
         </div>
     </div>
     
-    <div id="slope-legend">
-        <div>Terrain Slope (degrees)</div>
-        <div id="slope-gradient"></div>
-        <div class="labels">
+    <div id="slope-legend" class="absolute right-5 top-96 z-50 bg-black/80 text-white p-4 rounded-xl border border-white/10 w-56 hidden">
+        <div class="text-sm mb-2">Terrain Slope (degrees)</div>
+        <div id="slope-gradient" class="h-3 w-full rounded-md bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 my-2"></div>
+        <div class="labels flex justify-between text-sm opacity-90">
             <span>0°</span>
             <span>~22°</span>
             <span>45°+</span>
         </div>
     </div>
+    
+    <script>
+        function toggleInstructions() {
+            const content = document.getElementById('instructions-content');
+            const arrow = document.getElementById('instructions-arrow');
+            
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                // Collapse
+                content.style.maxHeight = '0px';
+                content.style.marginTop = '0px';
+                arrow.style.transform = 'rotate(-90deg)';
+            } else {
+                // Expand
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.style.marginTop = '12px';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Initialize as expanded
+        document.addEventListener('DOMContentLoaded', function() {
+            const content = document.getElementById('instructions-content');
+            content.style.maxHeight = content.scrollHeight + 'px';
+        });
+    </script>
     
     <script type="module" src="/src/main.ts"></script>
 </body>

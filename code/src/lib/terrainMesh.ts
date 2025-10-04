@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { HeightData } from './terrainLoader.js';
 
+
+
+
+
 export interface TerrainMeshOptions {
     scale?: number;
     heightScale?: number;

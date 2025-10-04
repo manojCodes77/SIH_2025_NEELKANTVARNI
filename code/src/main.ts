@@ -16,6 +16,7 @@ class PlanetaryRoverSimulator {
     private terrainMesh: TerrainMesh | null = null;
     private pathfindingEngine: PathfindingEngine | null = null;
     private rover: Rover | null = null;
+    private skyboxMaterial: THREE.ShaderMaterial | null = null;
     private pathLine: THREE.Line | null = null;
     private startMarker: THREE.Mesh | null = null;
     private endMarker: THREE.Mesh | null = null;
@@ -80,8 +81,8 @@ class PlanetaryRoverSimulator {
      */
     private initializeRenderer(): void {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        // Balanced sky color
-        this.renderer.setClearColor(0x87ceeb);
+        // Mars-themed sky color
+        this.renderer.setClearColor(0xCD853F); // Mars dusty orange-brown
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -98,6 +99,9 @@ class PlanetaryRoverSimulator {
      * Initialize the 3D scene with lighting
      */
     private initializeScene(): void {
+        // Add skybox first
+        this.createMarsAtmosphere();
+        
         // Ambient light - reduced intensity
         const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
         this.scene.add(ambientLight);
@@ -116,8 +120,8 @@ class PlanetaryRoverSimulator {
         directionalLight.shadow.camera.bottom = -100;
         this.scene.add(directionalLight);
         
-        // Atmosphere - lighter fog
-        this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
+        // Atmosphere - Mars atmosphere fog
+        this.scene.fog = new THREE.FogExp2(0xCD853F, 0.002);
         
         // Environment map (procedural hemi light feel) - reduced intensity
         const hemi = new THREE.HemisphereLight(0x87ceeb, 0x8b4513, 0.3);
@@ -158,7 +162,7 @@ class PlanetaryRoverSimulator {
         this.controls.dampingFactor = 0.08;
         this.controls.target.set(0, 0, 0);
         this.controls.minDistance = 10;
-        this.controls.maxDistance = 200;
+        this.controls.maxDistance = 80;
         this.controls.maxPolarAngle = Math.PI * 0.49;
         this.controls.update();
     }
@@ -688,7 +692,7 @@ class PlanetaryRoverSimulator {
         this.renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(this.renderPass);
         
-        const bloomStrength = 0.3;
+        const bloomStrength = 0.0;
         const bloomRadius = 0.4;
         const bloomThreshold = 0.8;
         this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), bloomStrength, bloomRadius, bloomThreshold);
@@ -871,36 +875,19 @@ class PlanetaryRoverSimulator {
         this.isDayMode = !this.isDayMode;
         
         if (this.isDayMode) {
-            // Day mode
-            this.renderer.setClearColor(0x87ceeb);
-            this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
-            this.scene.traverse((obj) => {
-                if (obj instanceof THREE.DirectionalLight) {
-                    obj.intensity = 1.0;
-                }
-                if (obj instanceof THREE.AmbientLight) {
-                    obj.intensity = 0.4;
-                }
-                if (obj instanceof THREE.HemisphereLight) {
-                    obj.intensity = 0.3;
-                }
-            });
+            // Day mode - Update only skybox colors with orange tinge
+            // Update skybox colors for day
+            if (this.skyboxMaterial) {
+                this.skyboxMaterial.uniforms.topColor.value.setHex(0x6BA3D6); // Light blue with orange tinge
+                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0xA8C8E1); // Sky blue with warm tinge
+            }
         } else {
-            // Night mode
-            this.renderer.setClearColor(0x0a0a1a);
-            this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.005);
-            this.scene.traverse((obj) => {
-                if (obj instanceof THREE.DirectionalLight) {
-                    obj.intensity = 0.3;
-                    obj.color.setHex(0x9999ff);
-                }
-                if (obj instanceof THREE.AmbientLight) {
-                    obj.intensity = 0.1;
-                }
-                if (obj instanceof THREE.HemisphereLight) {
-                    obj.intensity = 0.1;
-                }
-            });
+            // Night mode - Update only skybox colors with subtle orange
+            // Update skybox colors for night
+            if (this.skyboxMaterial) {
+                this.skyboxMaterial.uniforms.topColor.value.setHex(0x1A0F08); // Very dark blue with orange tinge
+                this.skyboxMaterial.uniforms.bottomColor.value.setHex(0x0A0502); // Near black with warm tinge
+            }
         }
     }
 
@@ -954,6 +941,83 @@ class PlanetaryRoverSimulator {
     private updateElement(id: string, value: string): void {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
+    }
+
+    /**
+     * Create Mars-like atmosphere skybox
+     */
+    private createMarsAtmosphere(): void {
+        // Create a large sphere for the sky
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        
+        // Create gradient material for Mars atmosphere
+        this.skyboxMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                topColor: { value: new THREE.Color(0x000015) }, // Dark space blue
+                bottomColor: { value: new THREE.Color(0x000005) }, // Almost black
+                offset: { value: 33 },
+                exponent: { value: 0.6 }
+            },
+            vertexShader: `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+                    vWorldPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 topColor;
+                uniform vec3 bottomColor;
+                uniform float offset;
+                uniform float exponent;
+                varying vec3 vWorldPosition;
+                void main() {
+                    float h = normalize( vWorldPosition + offset ).y;
+                    gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h, 0.0 ), exponent ), 0.0 ) ), 1.0 );
+                }
+            `,
+            side: THREE.BackSide
+        });
+        
+        const sky = new THREE.Mesh(skyGeometry, this.skyboxMaterial);
+        this.scene.add(sky);
+        
+        // Optional: Add some atmospheric particles/dust
+        this.createAtmosphericParticles();
+    }
+
+    /**
+     * Create atmospheric dust particles for Mars atmosphere
+     */
+    private createAtmosphericParticles(): void {
+        const particleCount = 800;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            // Random positions within a large sphere
+            const radius = 200 + Math.random() * 200;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            
+            positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i + 1] = radius * Math.cos(phi);
+            positions[i + 2] = radius * Math.sin(phi) * Math.sin(theta);
+        }
+        
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xFFFFFF,
+            size: 1.5,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        this.scene.add(particleSystem);
     }
 
 }
